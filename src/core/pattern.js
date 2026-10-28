@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — patterns
+   cannoli — patterns
    A pattern answers one question: "what plays in cycle c?"
    It returns events with start/dur as fractions of the cycle.
    `len` is how many cycles the pattern lasts before it repeats

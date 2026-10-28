@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — compiler
+   cannoli — compiler
    Source → a program: settings plus one pattern per thread.
    Collects every error (with a fix when there is one) instead
    of stopping at the first, and a few "this might clash"
@@ -8,7 +8,7 @@
 
 import { lex } from "./lexer.js";
 import { parseStatement, scanDefs } from "./parser.js";
-import { LoomError, closest } from "./errors.js";
+import { CannoliError, closest } from "./errors.js";
 import { VERBS, GENERATORS, DRUM_NAMES } from "../core/verbs.js";
 import {
   Pattern, pure, silence, sequence, stack, chordOf, then, times, choose, mapNotes, sorted, mod,
@@ -29,7 +29,7 @@ const DEFAULT_TEMPO = 100;
 
 /**
  * @param {string} source
- * @returns {{ program: Program, errors: LoomError[], warnings: LoomError[],
+ * @returns {{ program: Program, errors: CannoliError[], warnings: CannoliError[],
  *             symbols: { vars: string[], defs: string[], threads: string[] } }}
  */
 export function compile(source) {
@@ -40,7 +40,7 @@ export function compile(source) {
     try {
       asts.push({ ...parseStatement(st, { defs }), statement: st });
     } catch (err) {
-      errors.push(asLoomError(err, st));
+      errors.push(asCannoliError(err, st));
     }
   }
   return new Compiler(asts, errors).run();
@@ -77,7 +77,7 @@ class Compiler {
     try {
       fn();
     } catch (err) {
-      this.errors.push(asLoomError(err, ast.statement));
+      this.errors.push(asCannoliError(err, ast.statement));
     }
   }
 
@@ -91,7 +91,7 @@ class Compiler {
           const v = this.num(a.value, emptyEnv())({ bar: 0, vars: {} });
           const limits = { tempo: [20, 300], beats: [1, 16], swing: [0, 0.5] }[a.name];
           if (!(v >= limits[0] && v <= limits[1])) {
-            throw new LoomError(`${a.name} should be between ${limits[0]} and ${limits[1]}.`, a.src);
+            throw new CannoliError(`${a.name} should be between ${limits[0]} and ${limits[1]}.`, a.src);
           }
           s[a.name] = a.name === "beats" ? Math.round(v) : v;
           return;
@@ -117,13 +117,13 @@ class Compiler {
 
   key(a) {
     const [note, mode] = a.args;
-    if (!note) throw new LoomError("Name the key, like  key d minor", a.src, { label: "add d minor", start: a.src.end, end: a.src.end, text: " d minor" });
+    if (!note) throw new CannoliError("Name the key, like  key d minor", a.src, { label: "add d minor", start: a.src.end, end: a.src.end, text: " d minor" });
     const root = pitchClass(note.text);
-    if (root === null) throw new LoomError(`"${note.text}" isn't a note name. Use a–g, with # or b: c, f#, bb.`, note);
+    if (root === null) throw new CannoliError(`"${note.text}" isn't a note name. Use a–g, with # or b: c, f#, bb.`, note);
     const modeName = mode?.text ?? "major";
     if (!MODES[modeName]) {
       const guess = closest(modeName, Object.keys(MODES));
-      throw new LoomError(`"${modeName}" isn't a mode. Try: ${Object.keys(MODES).join(", ")}.`, mode,
+      throw new CannoliError(`"${modeName}" isn't a mode. Try: ${Object.keys(MODES).join(", ")}.`, mode,
         guess ? { label: `change to "${guess}"`, start: mode.start, end: mode.end, text: guess } : undefined);
     }
     return { root, mode: modeName, name: `${note.text} ${modeName}` };
@@ -131,18 +131,18 @@ class Compiler {
 
   style(a) {
     const [word] = a.args;
-    if (!word) throw new LoomError(`Name a style: ${STYLE_NAMES.join(", ")}.`, a.src, { label: "add rave", start: a.src.end, end: a.src.end, text: " rave" });
+    if (!word) throw new CannoliError(`Name a style: ${STYLE_NAMES.join(", ")}.`, a.src, { label: "add rave", start: a.src.end, end: a.src.end, text: " rave" });
     if (STYLES[word.text]) return word.text;
     const guess = closest(word.text, STYLE_NAMES);
-    throw new LoomError(`"${word.text}" isn't a style. Try: ${STYLE_NAMES.join(", ")}.`, word,
+    throw new CannoliError(`"${word.text}" isn't a style. Try: ${STYLE_NAMES.join(", ")}.`, word,
       guess ? { label: `change to "${guess}"`, start: word.start, end: word.end, text: guess } : undefined);
   }
 
   chordLine(a) {
-    if (a.args.length === 0) throw new LoomError("List the chords, like  chords i VI III VII", a.src, { label: "add i VI III VII", start: a.src.end, end: a.src.end, text: " i VI III VII" });
+    if (a.args.length === 0) throw new CannoliError("List the chords, like  chords i VI III VII", a.src, { label: "add i VI III VII", start: a.src.end, end: a.src.end, text: " i VI III VII" });
     const degrees = a.args.map((tok) => {
       const d = chordDegree(tok.text);
-      if (d === null) throw new LoomError(`"${tok.text}" isn't a chord. Use roman numerals (i to vii) or 1 to 7.`, tok);
+      if (d === null) throw new CannoliError(`"${tok.text}" isn't a chord. Use roman numerals (i to vii) or 1 to 7.`, tok);
       return d;
     });
     return { degrees, names: a.args.map((t) => t.text) };
@@ -152,7 +152,7 @@ class Compiler {
 
   variable(name, src) {
     if (this.memo.has(name)) return this.memo.get(name);
-    if (this.compiling.has(name)) throw new LoomError(`"${name}" refers to itself, so it would never end.`, src);
+    if (this.compiling.has(name)) throw new CannoliError(`"${name}" refers to itself, so it would never end.`, src);
     this.compiling.add(name);
     try {
       const p = this.expr(this.vars.get(name).body, emptyEnv());
@@ -172,7 +172,7 @@ class Compiler {
 
   callDef(ast, env) {
     const def = this.defs.get(ast.name);
-    if (env.depth > MAX_CALL_DEPTH) throw new LoomError(`"${ast.name}" keeps calling itself, so it would never end.`, ast.src);
+    if (env.depth > MAX_CALL_DEPTH) throw new CannoliError(`"${ast.name}" keeps calling itself, so it would never end.`, ast.src);
     const nums = new Map(def.params.map((p, i) => [p, this.num(ast.args[i], env)]));
     return { def, env: { ...env, depth: env.depth + 1, nums: new Map([...env.nums, ...nums]) } };
   }
@@ -183,7 +183,7 @@ class Compiler {
     switch (ast.k) {
       case "num": return this.note(ast);
       case "rest": return silence;
-      case "hold": throw new LoomError('"_" holds the step before it, so it can\'t come first.', ast.src);
+      case "hold": throw new CannoliError('"_" holds the step before it, so it can\'t come first.', ast.src);
       case "seq": return this.seq(ast.items, env);
       case "group": return this.group(ast, env);
       case "name": return this.name(ast, env);
@@ -196,7 +196,7 @@ class Compiler {
       case "then": return then(this.expr(ast.left, env), this.expr(ast.right, env));
       case "times": {
         const count = Math.round(this.num(ast.count, env)({ bar: 0, vars: {} }));
-        if (!(count >= 1 && count <= 64)) throw new LoomError("Repeat a pattern 1 to 64 times.", ast.count.src ?? { start: 0, end: 0 });
+        if (!(count >= 1 && count <= 64)) throw new CannoliError("Repeat a pattern 1 to 64 times.", ast.count.src ?? { start: 0, end: 0 });
         return times(this.expr(ast.expr, env), count);
       }
       case "for": return this.forLoop(ast, env);
@@ -207,13 +207,13 @@ class Compiler {
         return choose((c, ctx) => (test(ctx) ? yes : no), Math.max(yes.len, no.len));
       }
       case "chain": return ast.steps.reduce((p, step) => this.step(step, p, env), this.expr(ast.expr, env));
-      default: throw new LoomError("I couldn't read this.", { start: 0, end: 1 });
+      default: throw new CannoliError("I couldn't read this.", { start: 0, end: 1 });
     }
   }
 
   note(ast) {
     if (!ast.isInt) {
-      throw new LoomError(`Steps are whole numbers (scale steps) — "${ast.src.text}" isn't.`, ast.src,
+      throw new CannoliError(`Steps are whole numbers (scale steps) — "${ast.src.text}" isn't.`, ast.src,
         { label: `change to ${Math.round(ast.value)}`, start: ast.src.start, end: ast.src.end, text: String(Math.round(ast.value)) });
     }
     return pure([{ deg: ast.value, alt: ast.alt }], range(ast.src));
@@ -223,7 +223,7 @@ class Compiler {
     const steps = [];
     for (const item of items) {
       if (item.k === "hold") {
-        if (steps.length === 0) throw new LoomError('"_" holds the step before it, so it can\'t come first.', item.src);
+        if (steps.length === 0) throw new CannoliError('"_" holds the step before it, so it can\'t come first.', item.src);
         steps[steps.length - 1].weight += 1;
         continue;
       }
@@ -246,14 +246,14 @@ class Compiler {
     if (this.vars.has(n)) return this.variable(n, ast.src);
     const numeric = this.numName(n, env);
     if (numeric) return dynamicNote(numeric, range(ast.src));
-    if (this.defs.has(n)) throw new LoomError(`"${n}" is a verb you defined — use it after ">", like  0 2 4 > ${n}`, ast.src);
+    if (this.defs.has(n)) throw new CannoliError(`"${n}" is a verb you defined — use it after ">", like  0 2 4 > ${n}`, ast.src);
     if (VERBS[n]) {
-      throw new LoomError(`"${n}" is a verb, so it goes after ">", like  0 2 4 > ${n}`, ast.src,
+      throw new CannoliError(`"${n}" is a verb, so it goes after ">", like  0 2 4 > ${n}`, ast.src,
         { label: `add ">" before ${n}`, start: ast.src.start, end: ast.src.start, text: "> " });
     }
     const options = [...this.vars.keys(), ...Object.keys(GENERATORS), ...env.nums.keys()];
     const guess = closest(n, options);
-    throw new LoomError(`I don't know "${n}".${guess ? ` Did you mean "${guess}"?` : " Define it first, like  " + n + " = 0 2 4"}`, ast.src,
+    throw new CannoliError(`I don't know "${n}".${guess ? ` Did you mean "${guess}"?` : " Define it first, like  " + n + " = 0 2 4"}`, ast.src,
       guess ? { label: `change to "${guess}"`, start: ast.src.start, end: ast.src.end, text: guess } : undefined);
   }
 
@@ -279,7 +279,7 @@ class Compiler {
     const from = Math.round(this.num(ast.from, env)(at));
     const to = Math.round(this.num(ast.to, env)(at));
     const count = Math.abs(to - from) + 1;
-    if (count > 64) throw new LoomError("A loop can run at most 64 times.", ast.src);
+    if (count > 64) throw new CannoliError("A loop can run at most 64 times.", ast.src);
     const loopEnv = { ...env, loops: new Set([...env.loops, ast.name]) };
     const body = this.expr(ast.body, loopEnv);
     const dir = to >= from ? 1 : -1;
@@ -331,13 +331,13 @@ class Compiler {
         if (fn) return fn;
         const options = ["bar", ...env.nums.keys(), ...env.loops, ...[...this.vars.keys()].filter((n) => this.numericVar(n))];
         const guess = closest(ast.name, options);
-        throw new LoomError(`"${ast.name}" isn't a number I know.${guess ? ` Did you mean "${guess}"?` : ""}`, ast.src,
+        throw new CannoliError(`"${ast.name}" isn't a number I know.${guess ? ` Did you mean "${guess}"?` : ""}`, ast.src,
           guess ? { label: `change to "${guess}"`, start: ast.src.start, end: ast.src.end, text: guess } : undefined);
       }
       // a pattern AST used as a number, e.g. a lone `3`
       case "num": return () => ast.value;
       case "name": return this.num({ k: "nname", name: ast.name, src: ast.src }, env);
-      default: throw new LoomError("Expected a number here.", ast.src ?? { start: 0, end: 1 });
+      default: throw new CannoliError("Expected a number here.", ast.src ?? { start: 0, end: 1 });
     }
   }
 
@@ -366,7 +366,7 @@ class Compiler {
     unplaced.slice(1).forEach((a, i) => {
       const end = a.statement.end;
       const other = unplaced[i].name;
-      this.warnings.push(new LoomError(`"${a.name}" and "${other}" both sit in the middle range and may crowd each other. Try moving one with > high or > low.`,
+      this.warnings.push(new CannoliError(`"${a.name}" and "${other}" both sit in the middle range and may crowd each other. Try moving one with > high or > low.`,
         { start: a.statement.start, end: a.statement.start + a.name.length }, { label: 'add "> high"', start: end, end, text: " > high" }));
     });
   }
@@ -413,9 +413,9 @@ function range(tok) {
   return [tok.start, tok.end];
 }
 
-function asLoomError(err, statement) {
-  if (err instanceof LoomError) return err;
-  return new LoomError(`Something went wrong reading this line: ${err.message}`, { start: statement.start, end: statement.end });
+function asCannoliError(err, statement) {
+  if (err instanceof CannoliError) return err;
+  return new CannoliError(`Something went wrong reading this line: ${err.message}`, { start: statement.start, end: statement.end });
 }
 
 function dedupe(errors) {

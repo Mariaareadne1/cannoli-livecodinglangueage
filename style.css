@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — stylesheet
+   cannoli — stylesheet
    Ink-blue terminal with warm paper text. Each thread gets its
    own colour, used in the code and in the thread grid.
    ============================================================ */
@@ -92,6 +92,8 @@ kbd {
   cursor: pointer;
 }
 .btn:hover { border-color: var(--ink-faint); background: var(--bg-3); }
+a.btn { text-decoration: none; }
+.panel-help a { color: var(--t1); }
 .btn kbd { font-size: 0.75em; }
 .btn-play { border-color: var(--accent); color: var(--accent); }
 .is-playing .btn-play { background: rgba(255,122,89,0.12); }

@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — synths
+   cannoli — synths
    One function per sound, plus the per-note parts of the
    signature effects (tape, pump, air). Every note builds a
    small graph:  source → tone filter → envelope → [pump] → pan

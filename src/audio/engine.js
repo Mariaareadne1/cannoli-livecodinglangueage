@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — engine
+   cannoli — engine
    Schedules one whole bar at a time, just before it starts.
    That makes every change land on a downbeat: a new program
    waits in `pending` until the next bar (or the next 4-bar
@@ -31,7 +31,9 @@ const MIXES = {
 };   // headroom so kick transients that slip past the limiter don't clip
 
 export class Engine {
-  constructor() {
+  /** @param {{ AudioContext?: typeof AudioContext }} [opts]  pass one in to run outside a browser */
+  constructor({ AudioContext: Ctx } = {}) {
+    this.AudioContextClass = Ctx ?? null;
     this.ctx = null;
     this.program = null;
     this.pending = null;
@@ -183,7 +185,7 @@ export class Engine {
 
   async ensureContext() {
     if (!this.ctx) {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const Ctx = this.AudioContextClass ?? (globalThis.AudioContext || globalThis.webkitAudioContext);
       this.ctx = new Ctx({ latencyHint: "interactive" });
       this.build();
     }
@@ -213,7 +215,7 @@ export class Engine {
     masterTone.frequency.value = 20000;
     masterTone.Q.value = 0.5;
     input.connect(warm).connect(masterTone).connect(glue).connect(limiter).connect(this.master).connect(ctx.destination);
-    this.mixNodes = { warm, glue, masterTone };
+    this.mixNodes = { input, warm, glue, masterTone };
     this.mix = "clean";
 
     const room = ctx.createConvolver();
@@ -248,8 +250,14 @@ export class Engine {
     if (name === this.mix) return;
     this.mix = name;
     const mix = MIXES[name];
-    const { warm, glue, masterTone } = this.mixNodes;
-    warm.curve = saturationCurve(mix.drive);
+    const { input, warm, glue, masterTone } = this.mixNodes;
+    // a fresh saturator rather than a new curve: some Web Audio implementations allow setting a curve only once
+    const next = this.ctx.createWaveShaper();
+    next.curve = saturationCurve(mix.drive);
+    next.oversample = "2x";
+    input.connect(next).connect(masterTone);
+    input.disconnect(warm);
+    this.mixNodes = { ...this.mixNodes, warm: next };
     glue.threshold.setValueAtTime(mix.threshold, time);
     masterTone.frequency.setTargetAtTime(mix.tone, time, 0.2);
   }
@@ -268,7 +276,7 @@ function safeRender(program, bar) {
   try {
     return renderBar(program, bar);
   } catch (err) {
-    console.error("loom: couldn't render bar", bar, err);
+    console.error("cannoli: couldn't render bar", bar, err);
     return [];
   }
 }

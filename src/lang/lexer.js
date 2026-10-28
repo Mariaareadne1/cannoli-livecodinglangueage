@@ -1,11 +1,11 @@
 /* ============================================================
-   loom — lexer
+   cannoli — lexer
    Splits source into statements (a line, plus any following
    lines that start with ">") and each statement into tokens
    with character offsets.
    ============================================================ */
 
-import { LoomError } from "./errors.js";
+import { CannoliError } from "./errors.js";
 
 /**
  * @typedef {{ type: "num"|"name"|"op"|"rest"|"hold", text: string, start: number, end: number,
@@ -20,7 +20,7 @@ const NEGATIVE_AFTER = new Set(["(", "[", ",", ">", "=", ":", "+", "-", "*", "/"
 
 /**
  * @param {string} source
- * @returns {{ statements: Statement[], errors: LoomError[] }}
+ * @returns {{ statements: Statement[], errors: CannoliError[] }}
  */
 export function lex(source) {
   const statements = [];
@@ -89,7 +89,7 @@ export function lexLine(line, offset = 0) {
     if (ch === "_") { push("hold", "_", i); i++; continue; }
     if (ONE_CHAR_OPS.has(ch)) { push("op", ch, i); i++; continue; }
 
-    errors.push(new LoomError(`"${ch}" isn't part of loom.`, { start: offset + i, end: offset + i + 1 }, {
+    errors.push(new CannoliError(`"${ch}" isn't part of cannoli.`, { start: offset + i, end: offset + i + 1 }, {
       label: `remove "${ch}"`, start: offset + i, end: offset + i + 1, text: "",
     }));
     i++;

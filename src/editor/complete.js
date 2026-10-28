@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — suggestions
+   cannoli — suggestions
    Given the text and cursor, what could come next? Returns the
    word being typed (from/to) and a list of suggestions, each
    with a one-line explanation for the suggestion card.

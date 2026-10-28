@@ -152,3 +152,15 @@ test("key changes and chord lines apply from a bar", () => {
   assert.equal(renderBar(p, 0)[0].midi[0], 60);
   assert.equal(renderBar(p, 2)[0].midi[0], 55); // G3: each key's root sits near middle C
 });
+
+test("mute silences a thread, also only in some bars", () => {
+  const p = program("a: 0 > mute\nb: 2 > when bar <= 2 mute");
+  assert.equal(renderBar(p, 0).length, 0);
+  assert.deepEqual(renderBar(p, 2).map((n) => n.thread), ["b"]);
+});
+
+test("solo plays only the soloed threads", () => {
+  const p = program("a: 0\nb: 2 > solo\nc: 4 > when bar > 1 solo");
+  assert.deepEqual(renderBar(p, 0).map((n) => n.thread), ["b"]);
+  assert.deepEqual(renderBar(p, 1).map((n) => n.thread), ["b", "c"]);
+});

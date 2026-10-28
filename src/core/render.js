@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — render
+   cannoli — render
    One bar of a program → the notes to play, in MIDI, with every
    "always sounds good" rule applied: pentatonic snapping, the
    downbeat chord lock, ranges, close voicings, swing, and the
@@ -43,8 +43,13 @@ export function renderBar(program, bar) {
   const ctx = { bar, chord, vars: {}, seed: 0 };
   const kit = STYLES[settings.style]?.kit ?? "house";
 
+  const queried = threads.map((thread) => thread.pattern.query(bar, ctx));
+  // if anything is soloed this bar, only soloed threads play
+  const soloing = queried.some((events) => events.some((e) => e.props.solo));
+
   return threads.flatMap((thread, threadIndex) =>
-    thread.pattern.query(bar, ctx)
+    queried[threadIndex]
+      .filter((e) => !soloing || e.props.solo)
       .filter((e) => e.start >= -EPS && e.start < 1 - EPS)
       .flatMap((e) => {
         const props = { ...DEFAULTS, kit, ...e.props };

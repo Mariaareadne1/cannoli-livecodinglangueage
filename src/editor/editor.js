@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — editor
+   cannoli — editor
    A textarea over a coloured <pre>. Adds:
      · a suggestion card while typing (Tab / Enter to accept)
      · hover on an underlined problem → what's wrong + a Fix button
@@ -24,7 +24,7 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
       <div class="ed-body">
         <pre class="ed-hl" aria-hidden="true"></pre>
         <textarea class="ed-input" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"
-          aria-label="loom code. Ctrl+Enter to play or update, Ctrl+period to stop."></textarea>
+          aria-label="cannoli code. Ctrl+Enter to play or update, Ctrl+period to stop."></textarea>
       </div>
     </div>
     <div class="ed-card" role="listbox" hidden></div>

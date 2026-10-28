@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — harmony
+   cannoli — harmony
    One key for everything. Scale steps → MIDI notes, the
    downbeat chord lock, ranges, pentatonic snapping and close
    chord voicings. This is what keeps every thread in tune with

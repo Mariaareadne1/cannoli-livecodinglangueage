@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — styles
+   cannoli — styles
    A style is a feel: default tempo and swing, which drum kit
    and mix to use, and what the suggestion cards should put
    first. It never changes how the language works.

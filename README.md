@@ -1,4 +1,4 @@
-# loom
+# cannoli
 
 A live-coding language for performing music. You write a few short
 **threads** (voices), then weave them with a small set of verbs, loops and
@@ -23,6 +23,20 @@ hats: hits 7 16 > hat > gain 0.4
 
 **Ctrl+Enter** plays, and applies changes at the next bar. **Ctrl+.** stops
 at the end of the bar.
+
+The **cheat sheet** (`sheet.html`, or the "sheet" button in the app) lists
+every verb, groove and style, explains how a line works, and has a song for
+each style with notes on how it's built.
+
+## Stopping a line
+
+| Do this | What happens |
+|---|---|
+| `# lead: …` | comment the line out; it stops at the next bar after you press play |
+| `lead: … > mute` | silence the thread, keep the code |
+| `bass: … > solo` | only soloed threads play |
+| `> when bar <= 8 mute` | silent until bar 9: how songs build up |
+| `def enter n = when bar <= n mute` | a function for that, then `> enter 8` on any thread |
 
 ---
 
@@ -94,6 +108,7 @@ lead: theme > maybe 0.3 shuffle           # 30% of bars
 | pitch | `up n` `down n` `oct n` `flip` `penta` `arp` |
 | structure | `grow` `stack p` `mask p` |
 | change over time | `every n verb` `when cond verb` `maybe p verb` `sometimes verb` `drift n` |
+| mix | `mute` `solo` |
 | range | `low` `mid` `high` |
 | harmony | `free` (ignore the chord lock) `tight` (lock every note) |
 | sound | `saw` `square` `tri` `sine` `pluck` `pad` `bell` `supersaw` `acid` `stab` `sub` `boom` · drums: `kick` `snare` `hat` `open` `clap` `rim` `tom` `cowbell` `shaker` |

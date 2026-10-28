@@ -1,73 +1,118 @@
-/* loom — example pieces. The first one is what a new visitor sees. */
+/* cannoli — example pieces. The first one is what a new visitor sees. */
 
 export const EXAMPLES = [
   {
-    name: "rave · warehouse",
-    note: "supersaw lead, an acid line built from arithmetic, rolling hats",
-    code: `# rave — Ctrl+Enter to play, Ctrl+. to stop
+    name: "rave · 4am warehouse",
+    note: "a rave track that builds: drums first, then hats, then the supersaw lead",
+    code: `# 4am Warehouse — rave
 style rave
 key f minor
 chords i VI III VII
 
 riff = 0 2 4 7
-lead: riff > fast 2
-  > every 4 (rev > up 2)
-  > high > supersaw > ghost 0.3
-acid: run 8 * 3 % 7 > low > acid > drift 0.2 > bright 0.5
+def enter n = when bar <= n mute
+
 kick: beat fourfloor > kick
-hats: beat offbeat > open > gain 0.5
-clap: beat backbeat > clap
-roll: beat rolling > hat > gain 0.3 > when bar % 8 == 0 (fast 2)`,
+acid: run 8 * 3 % 7 > acid > low > drift 0.2
+  > when bar > 16 (fast 2)
+hats: beat offbeat > open > gain 0.5 > enter 4
+clap: beat backbeat > clap > enter 4
+lead: riff > fast 2 > every 4 (rev > up 2)
+  > high > supersaw > ghost 0.3 > enter 8
+roll: beat rolling > hat > gain 0.3 > every 8 (fast 2) > enter 8`,
+    explain: [
+      ["def enter n = when bar <= n mute", "a function you made: the thread stays silent until bar n, so the song builds"],
+      ["acid: run 8 * 3 % 7", "the acid line is arithmetic: count 0–7, multiply by 3, wrap at 7 → 0 3 6 2 5 1 4 0"],
+      ["> drift 0.2", "a few notes wander each bar, so the acid line never repeats exactly"],
+      ["> when bar > 16 (fast 2)", "after bar 16 the acid doubles in speed: the drop"],
+      ["> every 4 (rev > up 2)", "every 4th bar the riff plays backwards, two steps higher"],
+      ["> enter 8", "the lead comes in at bar 9"],
+    ],
   },
   {
-    name: "funk · baile",
+    name: "funk · baile no morro",
     note: "Brazilian funk: tamborzão drums, a booming 808, stabs on the tresillo",
-    code: `# Brazilian funk — Ctrl+Enter to play, Ctrl+. to stop
+    code: `# Baile no Morro — Brazilian funk
 style funk
 key c minor
 chords i i iv iv
 
+def enter n = when bar <= n mute
+
 kick: beat tamborzao > kick
-snare: beat backbeat > snare > every 2 (chop 2)
-bell: beat batida > cowbell > gain 0.4
 boom: 0 . . 0 . . 0 . . . 3 . . 0 . . > boom
-stab: chord > mask (beat tresillo) > stab > high > gain 0.5`,
+  > every 4 (up 2)
+bell: beat batida > cowbell > gain 0.4 > enter 2
+snare: beat backbeat > snare > every 2 (chop 2) > enter 2
+stab: chord > mask (beat tresillo) > stab > high > gain 0.5 > enter 4
+vox: 4 . 4 2 . 0 . . > square > high > short > enter 8
+  > maybe 0.5 rev`,
+    explain: [
+      ["kick: beat tamborzao", "the tamborzão: baile funk's signature 3-3-4-3-3 kick pattern"],
+      ["boom: 0 . . 0 …", "a pitched 808: the dots are rests, the numbers are notes in C minor"],
+      ["> every 4 (up 2)", "every 4th bar the 808 line jumps up a third"],
+      ["> every 2 (chop 2)", "every other bar each snare becomes a quick double hit"],
+      ["chord > mask (beat tresillo)", "the chord is cut into stabs on the 3-3-2 tresillo rhythm"],
+      ["> maybe 0.5 rev", "the vocal-chop line flips backwards in about half the bars"],
+    ],
   },
   {
-    name: "house · late club",
-    note: "chord stabs on a skipping rhythm, offbeat sub bass, shuffling hats",
-    code: `# house — Ctrl+Enter to play, Ctrl+. to stop
+    name: "house · sunday morning club",
+    note: "chord stabs on a skipping rhythm, an offbeat sub bass, a plucked hook",
+    code: `# Sunday Morning Club — house
 style house
 key a minor
 chords ii V I vi
 
-stabs: chord > mask (beat skip) > stab > bloom 0.3
-bass: beat offbeat > sub
+hook = 4 _ 2 . 0 _ . .
+def enter n = when bar <= n mute
+
 kick: beat fourfloor > kick
-hats: beat shuffle > hat > gain 0.4
-shaker: hits 16 16 > shaker > gain 0.3
-lead: 4 _ 2 . 0 _ . . > every 2 (up 2) > high > pluck > ghost`,
+hats: beat shuffle > hat > gain 0.4 > enter 2
+bass: beat offbeat > sub > enter 2
+stabs: chord > mask (beat skip) > stab > bloom 0.3 > enter 4
+lead: hook > every 2 (up 2) > high > pluck > ghost > enter 8
+  > when bar % 16 == 0 (fast 2)
+shaker: hits 16 16 > shaker > gain 0.25 > enter 8`,
+    explain: [
+      ["chords ii V I vi", "a deep-house progression; every thread follows it automatically"],
+      ["bass: beat offbeat > sub", "the bass bounces between the kicks: the classic house push"],
+      ["chord > mask (beat skip)", "the chords become syncopated stabs"],
+      ["hook = 4 _ 2 . 0 _ . .", "a variable: _ holds the note before, . is a rest"],
+      ["> when bar % 16 == 0 (fast 2)", "every 16th bar the hook doubles up, a fill before the next section"],
+      ["hits 16 16", "16 hits in 16 steps: a shaker on every sixteenth"],
+    ],
   },
   {
-    name: "chill · late night",
-    note: "slow and warm: tape pads, a bell melody that rotates with the bar number",
-    code: `# chill — Ctrl+Enter to play, Ctrl+. to stop
+    name: "chill · rain on the window",
+    note: "slow and warm: tape pads, a bell melody that turns with the bar number",
+    code: `# Rain on the Window — chill
 style chill
 key e dorian
 chords ii V I IV
 
 theme = 0 2 4 6 4 2
+
 keys: chord > slow 2 > pad > bloom > tape 0.4
-melody: theme > rot bar % 3 > slow 2 > high > bell > ghost 0.5 > maybe 0.4 rev
+melody: theme > rot bar % 3 > slow 2 > high > bell > ghost 0.5
+  > maybe 0.4 rev
 bass: 0 _ . 4 > sub
 kick: beat boombap > kick
 snare: beat backbeat > snare > gain 0.6
-hats: hits 6 8 > hat > gain 0.3`,
+hats: hits 6 8 > hat > gain 0.3 > sometimes (chop 2)`,
+    explain: [
+      ["style chill", "80 bpm, swung, soft drums and a warm lo-fi mix"],
+      ["chord > slow 2 > pad", "each chord is held for two bars"],
+      ["> bloom > tape 0.4", "a reverb that rings in key, plus warmth and wobble"],
+      ["rot bar % 3", "the melody's starting note shifts with the bar number: 1, 2, 0, 1, 2 …"],
+      ["> ghost 0.5", "echoes that climb up through the current chord"],
+      ["> sometimes (chop 2)", "in about half the bars the hats double up"],
+    ],
   },
   {
     name: "first light",
     note: "a variable, a function, every, when, and all five threads",
-    code: `# loom — Ctrl+Enter to play, Ctrl+. to stop
+    code: `# cannoli — Ctrl+Enter to play, Ctrl+. to stop
 key d minor
 tempo 96
 chords i VI III VII

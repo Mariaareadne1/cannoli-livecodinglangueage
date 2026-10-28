@@ -1,8 +1,11 @@
 {
-  "name": "loom",
+  "name": "cannoli",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "node-web-audio-api": "^2.2.0"
   }
 }

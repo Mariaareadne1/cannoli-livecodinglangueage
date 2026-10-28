@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — the page
+   cannoli — the page
    Wires the editor, the compiler and the engine together, and
    draws the status line, problem list and thread grid.
    ============================================================ */
@@ -8,10 +8,12 @@ import { compile } from "./lang/compile.js";
 import { Engine } from "./audio/engine.js";
 import { createEditor } from "./editor/editor.js";
 import { EXAMPLES } from "./examples.js";
+import { codeFromUrl } from "./share.js";
 import { STYLES, STYLE_NAMES } from "./core/styles.js";
 
-const STORE_CODE = "loom-code";
-const STORE_PREFS = "loom-prefs";
+const STORE_CODE = "cannoli-code";
+const OLD_STORE_CODES = ["pretzel-code", "loom-code"];   // saved under the language's earlier names
+const STORE_PREFS = "cannoli-prefs";
 const LINT_DELAY_MS = 120;
 const THREAD_COLORS = ["--t0", "--t1", "--t2", "--t3", "--t4", "--t5"];
 
@@ -20,8 +22,12 @@ const engine = new Engine();
 const prefs = { quantize: "bar", autofix: false, ...readJSON(STORE_PREFS) };
 const state = { result: null, runText: null, lastActiveKey: "" };
 
+// a song link (#code=…) wins over saved code; drop it from the URL so a reload keeps your edits
+const linked = codeFromUrl();
+if (linked) history.replaceState(null, "", location.pathname);
+
 const editor = createEditor($("editor"), {
-  value: readStore(STORE_CODE) || EXAMPLES[0].code,
+  value: linked ?? (readStore(STORE_CODE) || OLD_STORE_CODES.map(readStore).find(Boolean) || EXAMPLES[0].code),
   onRun: run,
   onStop: (now) => stop(now),
   onInput: (text) => {

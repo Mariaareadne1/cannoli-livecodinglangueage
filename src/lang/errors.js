@@ -1,9 +1,9 @@
-/* loom — errors with a source range and an optional one-click fix. */
+/* cannoli — errors with a source range and an optional one-click fix. */
 
 /**
  * @typedef {{ label: string, start: number, end: number, text: string }} Fix
  */
-export class LoomError extends Error {
+export class CannoliError extends Error {
   /**
    * @param {string} message  plain-language explanation
    * @param {{ start: number, end: number }} range  character offsets in the source
@@ -11,7 +11,7 @@ export class LoomError extends Error {
    */
   constructor(message, range, fix) {
     super(message);
-    this.name = "LoomError";
+    this.name = "CannoliError";
     this.start = range.start;
     this.end = Math.max(range.end, range.start + 1);
     this.fix = fix ?? null;

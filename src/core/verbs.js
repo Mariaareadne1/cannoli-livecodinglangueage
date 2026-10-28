@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — verbs and generators
+   cannoli — verbs and generators
    Every word that goes after ">" (a verb) or makes a pattern on
    its own (a generator). Each entry documents itself: the
    editor's suggestion cards read `doc` and `example` from here.
@@ -113,6 +113,12 @@ export const VERBS = {
       return { ...note, deg: note.deg + moves[Math.floor(rand(seed, i, ctx.bar, 7) * moves.length)] };
     })),
 
+  /* mixing a performance */
+  mute: verb("mix", [], "silences the thread (try it with when: > when bar <= 8 mute)", "lead > mute", (p) =>
+    mapEvents(p, () => [])),
+  solo: verb("mix", [], "only soloed threads play, so you can hear one on its own", "bass > solo", (p) =>
+    setProps(p, { solo: true })),
+
   /* range + harmony */
   low: verb("range", [], "puts the thread in the bass register", "bass > low", (p) => setProps(p, { range: "low" })),
   mid: verb("range", [], "puts the thread in the middle register (the default)", "theme > mid", (p) => setProps(p, { range: "mid" })),
@@ -200,4 +206,4 @@ function scaleLength(p, factor) {
 
 export const SOUND_NAMES = SOUNDS;
 export const DRUM_NAMES = DRUMS;
-export const VERB_GROUPS = ["order", "time", "pitch", "structure", "change", "range", "harmony", "sound", "color", "effect"];
+export const VERB_GROUPS = ["order", "time", "pitch", "structure", "change", "mix", "range", "harmony", "sound", "color", "effect"];

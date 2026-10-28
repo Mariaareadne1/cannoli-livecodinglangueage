@@ -1,0 +1,101 @@
+/* cannoli — cheat sheet layout. Builds on style.css; prints on paper. */
+
+body.sheet { display: block; height: auto; }
+
+.sh-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(13, 14, 25, 0.94);
+  backdrop-filter: blur(8px);
+}
+.sh-sub { font-weight: 400; color: var(--ink-dim); font-size: 15px; }
+.sh-nav { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.sh-nav a { color: var(--ink-dim); text-decoration: none; }
+.sh-nav a:hover { color: var(--accent); }
+.sh-actions { margin-left: auto; display: flex; gap: 8px; }
+a.btn { text-decoration: none; }
+
+.sh-main { max-width: 1100px; margin: 0 auto; padding: 8px 24px 80px; }
+.sh-section { padding-top: 28px; scroll-margin-top: 70px; }
+.sh-section h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.sh-section h2::before { content: "~ "; color: var(--accent); }
+.sh-section h3 { margin: 26px 0 8px; font-size: 14px; font-weight: 600; color: var(--t1); }
+.sh-intro { color: var(--ink-dim); margin: 0 0 12px; }
+.sh-section p { max-width: 75ch; }
+
+.ed-hl.sh-code {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+}
+.ed-hl.sh-inline { padding: 1px 6px; border-radius: 4px; background: var(--bg-3); font-size: 12.5px; white-space: nowrap; }
+.sh-name { color: var(--t1); font-weight: 600; white-space: nowrap; }
+
+.sh-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+.sh-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 6px 10px 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sh-table td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.sh-table td:first-child { width: 1%; white-space: nowrap; }
+
+.sh-anatomy ol { margin: 0; padding-left: 22px; }
+.sh-anatomy li { margin-bottom: 6px; }
+.sh-anatomy li > span, .sh-explain li > span { color: var(--ink-dim); margin-left: 8px; }
+
+.sh-steps { display: inline-flex; gap: 2px; }
+.sh-steps i { width: 10px; height: 14px; border-radius: 2px; background: var(--bg-3); }
+.sh-steps i.beat { box-shadow: inset 2px 0 0 var(--ink-faint); }
+.sh-steps i.on { background: var(--accent); }
+
+.sh-song { margin: 22px 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-2); }
+.sh-song header { display: flex; align-items: center; gap: 12px; }
+.sh-song h3 { margin: 0; color: var(--ink); font-size: 16px; }
+.sh-song header .btn { margin-left: auto; }
+.sh-song-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.sh-song .sh-code { background: var(--bg); }
+.sh-explain { list-style: none; margin: 12px 0; padding: 0; }
+.sh-explain li { margin-bottom: 10px; }
+.sh-explain li > span { display: block; margin: 3px 0 0; }
+
+@media (max-width: 820px) {
+  .sh-song-body { grid-template-columns: 1fr; }
+  .sh-actions { margin-left: 0; }
+  .sh-table td:first-child { white-space: normal; }
+}
+
+@media print {
+  :root {
+    --bg: #fff; --bg-2: #fff; --bg-3: #f2f0ea; --line: #ddd; --ink: #1a1a22; --ink-dim: #4a4a55; --ink-faint: #777;
+    --t0: #c2410c; --t1: #0f766e; --t2: #a16207; --t3: #6d28d9; --t4: #be185d; --t5: #1d4ed8; --accent: #c2410c;
+  }
+  body.sheet { background: #fff; }
+  .sh-top { position: static; background: #fff; }
+  .sh-nav, .sh-actions, .sh-song .btn { display: none; }
+  .sh-section, .sh-song { break-inside: avoid-page; }
+  .sh-table tr, .sh-code { break-inside: avoid; }
+}

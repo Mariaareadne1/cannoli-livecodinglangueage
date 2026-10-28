@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — syntax colouring
+   cannoli — syntax colouring
    Source → HTML spans. Also draws problem underlines (errors
    and warnings) and lights up the tokens that are sounding.
    ============================================================ */
@@ -47,6 +47,18 @@ function lineHtml(line, offset, problems, active, known) {
   if (eol) html += `<span class="${eol.severity === "warning" ? "p-warn" : "p-err"} p-eol"> </span>`;
   if (commentAt !== -1) html += `<span class="cm">${esc(line.slice(commentAt))}</span>`;
   return html;
+}
+
+/**
+ * The colour class of each token on a line, plus where a comment starts.
+ * Shared by the web editor (HTML) and the terminal editor (ANSI).
+ * @returns {{ tokens: { start: number, end: number, text: string, cls: string }[], commentAt: number }}
+ *          offsets are in the whole source; commentAt is within the line (-1 if none)
+ */
+export function classifyLine(line, offset, { threads = [], vars = [], defs = [] } = {}) {
+  const known = { threads, vars: new Set(vars), defs: new Set(defs) };
+  const { tokens } = lexLine(line, offset);
+  return { tokens: tokens.map((tok, i) => ({ ...tok, cls: tokenClass(tok, i, tokens, known) })), commentAt: findComment(line) };
 }
 
 function tokenClass(tok, i, tokens, known) {

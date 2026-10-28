@@ -1,5 +1,5 @@
 /* ============================================================
-   loom — parser
+   cannoli — parser
    Statements → syntax trees. Each statement is parsed on its
    own, so one mistake doesn't hide the others.
 
@@ -15,7 +15,7 @@
      step      := verb args* | (step > step …)
    ============================================================ */
 
-import { LoomError, closest } from "./errors.js";
+import { CannoliError, closest } from "./errors.js";
 import { VERBS, GENERATORS } from "../core/verbs.js";
 import { BEATS } from "../core/styles.js";
 
@@ -79,7 +79,7 @@ class Parser {
     if (this.is(text)) return this.next();
     const at = this.peek();
     const range = at ?? this.endRange();
-    throw new LoomError(message, range, { label: `insert "${text}"`, start: range.start, end: range.start, text: at ? `${text} ` : ` ${text}` });
+    throw new CannoliError(message, range, { label: `insert "${text}"`, start: range.start, end: range.start, text: at ? `${text} ` : ` ${text}` });
   }
 
   /* ---------- statements ---------- */
@@ -91,12 +91,12 @@ class Parser {
     if (a.type === "name" && b?.text === ":") return this.binding("thread");
     if (a.type === "name" && b?.text === "=") return this.binding("var");
     if (a.type === "name" && this.t.length > 1) {
-      throw new LoomError(`A line starts with a thread name and a colon, like  ${a.text}: 0 2 4`, a, {
+      throw new CannoliError(`A line starts with a thread name and a colon, like  ${a.text}: 0 2 4`, a, {
         label: `add ":" after ${a.text}`, start: a.end, end: a.end, text: ":",
       });
     }
     const guess = a.type === "name" ? closest(a.text, SETTINGS) : null;
-    throw new LoomError(`I don't know what "${a.text}" starts. A line can be a thread (lead: 0 2 4), a variable (theme = 0 2 4) or a setting (key, tempo, chords).`,
+    throw new CannoliError(`I don't know what "${a.text}" starts. A line can be a thread (lead: 0 2 4), a variable (theme = 0 2 4) or a setting (key, tempo, chords).`,
       a, guess ? { label: `change to "${guess}"`, start: a.start, end: a.end, text: guess } : undefined);
   }
 
@@ -107,11 +107,11 @@ class Parser {
     const reserved = KEYWORDS.includes(name.text) || SETTINGS.includes(name.text)
       || (kind === "var" && (VERBS[name.text] || GENERATORS[name.text]));
     if (reserved) {
-      throw new LoomError(`"${name.text}" already means something in loom. Pick another name.`, name);
+      throw new CannoliError(`"${name.text}" already means something in cannoli. Pick another name.`, name);
     }
     if (this.atEnd()) {
       const r = this.endRange();
-      throw new LoomError(`"${name.text}" needs a pattern after the ${kind === "thread" ? "colon" : "="}, like  0 2 4`, r,
+      throw new CannoliError(`"${name.text}" needs a pattern after the ${kind === "thread" ? "colon" : "="}, like  0 2 4`, r,
         { label: "add a pattern", start: r.start, end: r.start, text: " 0 2 4" });
     }
     const body = this.chain();
@@ -122,11 +122,11 @@ class Parser {
   def() {
     this.next();
     const name = this.next();
-    if (name?.type !== "name") throw new LoomError("Give the function a name, like  def lift n = up n > fast 2", name ?? this.endRange());
+    if (name?.type !== "name") throw new CannoliError("Give the function a name, like  def lift n = up n > fast 2", name ?? this.endRange());
     const params = [];
     while (!this.atEnd() && !this.is("=")) {
       const tok = this.next();
-      if (tok.type !== "name") throw new LoomError(`Parameters are names, like n or k — not "${tok.text}".`, tok);
+      if (tok.type !== "name") throw new CannoliError(`Parameters are names, like n or k — not "${tok.text}".`, tok);
       params.push(tok.text);
     }
     this.expect("=", `Write "=" before the body, like  def ${name.text} n = up n`);
@@ -162,7 +162,7 @@ class Parser {
     if (!this.atEnd()) {
       const tok = this.peek();
       const hint = tok.text === ")" ? 'There is a ")" without a matching "(".' : `I didn't expect "${tok.text}" here.`;
-      throw new LoomError(hint, tok, { label: `remove "${tok.text}"`, start: tok.start, end: tok.end, text: "" });
+      throw new CannoliError(hint, tok, { label: `remove "${tok.text}"`, start: tok.start, end: tok.end, text: "" });
     }
   }
 
@@ -174,7 +174,7 @@ class Parser {
     while (this.is(">")) {
       const arrow = this.next();
       if (this.atEnd() || this.is(">")) {
-        throw new LoomError('">" needs a verb after it, like rev or fast 2.', arrow, {
+        throw new CannoliError('">" needs a verb after it, like rev or fast 2.', arrow, {
           label: 'add "rev"', start: arrow.end, end: arrow.end, text: " rev",
         });
       }
@@ -196,7 +196,7 @@ class Parser {
     let expr = this.arith();
     while (this.is("x")) {
       const x = this.next();
-      if (this.atEnd()) throw new LoomError('"x" needs a count, like  theme x 4', x, { label: "add 2", start: x.end, end: x.end, text: " 2" });
+      if (this.atEnd()) throw new CannoliError('"x" needs a count, like  theme x 4', x, { label: "add 2", start: x.end, end: x.end, text: " 2" });
       expr = { k: "times", expr, count: this.numAtom() };
     }
     return expr;
@@ -225,7 +225,7 @@ class Parser {
     while (!this.atEnd() && !this.stopsSeq(this.peek())) items.push(this.item());
     if (items.length === 0) {
       const at = this.peek() ?? this.endRange();
-      throw new LoomError("Expected some notes here, like 0 2 4.", at);
+      throw new CannoliError("Expected some notes here, like 0 2 4.", at);
     }
     return items.length === 1 ? items[0] : { k: "seq", items };
   }
@@ -248,7 +248,7 @@ class Parser {
     if (tok.text === "for") return this.forLoop(tok);
     if (tok.text === "if") return this.ifExpr(tok);
     if (tok.type === "name") return this.nameItem(tok);
-    throw new LoomError(`I didn't expect "${tok.text}" here.`, tok, { label: `remove "${tok.text}"`, start: tok.start, end: tok.end, text: "" });
+    throw new CannoliError(`I didn't expect "${tok.text}" here.`, tok, { label: `remove "${tok.text}"`, start: tok.start, end: tok.end, text: "" });
   }
 
   group(open) {
@@ -264,7 +264,7 @@ class Parser {
   seqOrHolds() {
     const items = [];
     while (!this.atEnd() && !this.is("]") && !this.is(",")) items.push(this.item());
-    if (items.length === 0) throw new LoomError("An empty [ ] has nothing to play.", this.peek() ?? this.endRange());
+    if (items.length === 0) throw new CannoliError("An empty [ ] has nothing to play.", this.peek() ?? this.endRange());
     return items.length === 1 ? items[0] : { k: "seq", items };
   }
 
@@ -281,7 +281,7 @@ class Parser {
 
   forLoop(tok) {
     const v = this.next();
-    if (v?.type !== "name") throw new LoomError("Name the counter, like  for i 0..3 (theme + i)", v ?? tok);
+    if (v?.type !== "name") throw new CannoliError("Name the counter, like  for i 0..3 (theme + i)", v ?? tok);
     const from = this.numAtom();
     this.expect("..", "Write the range with two dots, like  for i 0..3 (theme + i)");
     const to = this.numAtom();
@@ -323,14 +323,14 @@ class Parser {
       return inner;
     }
     if (tok.type !== "name") {
-      throw new LoomError(`After ">" comes a verb, like rev or fast 2 — not "${tok.text}".`, tok);
+      throw new CannoliError(`After ">" comes a verb, like rev or fast 2 — not "${tok.text}".`, tok);
     }
     const v = VERBS[tok.text];
     if (v) return { k: "verb", name: tok.text, args: this.args(v.args, tok), src: tok };
     const def = this.known.defs.get(tok.text);
     if (def?.transformer) return { k: "callverb", name: tok.text, args: def.params.map(() => this.numAtomArg(tok)), src: tok };
     const guess = closest(tok.text, [...Object.keys(VERBS), ...[...this.known.defs].filter(([, d]) => d.transformer).map(([n]) => n)]);
-    throw new LoomError(`"${tok.text}" isn't a verb.${guess ? ` Did you mean "${guess}"?` : ""}`, tok,
+    throw new CannoliError(`"${tok.text}" isn't a verb.${guess ? ` Did you mean "${guess}"?` : ""}`, tok,
       guess ? { label: `change to "${guess}"`, start: tok.start, end: tok.end, text: guess } : undefined);
   }
 
@@ -357,7 +357,7 @@ class Parser {
     const options = Object.keys(BEATS);
     if (tok.type === "name" && options.includes(tok.text)) return tok.text;
     const guess = tok.type === "name" ? closest(tok.text, options) : null;
-    throw new LoomError(`"${tok.text}" isn't a groove. Try: ${options.join(", ")}.`, tok,
+    throw new CannoliError(`"${tok.text}" isn't a groove. Try: ${options.join(", ")}.`, tok,
       guess ? { label: `change to "${guess}"`, start: tok.start, end: tok.end, text: guess } : undefined);
   }
 
@@ -366,13 +366,13 @@ class Parser {
     const fill = { step: " rev", pat: " (0 4)", cond: " bar > 4", num: " 2", word: " fourfloor" }[kind];
     const what = { step: "a verb", pat: "a pattern", cond: "a condition", num: "a number", word: "a groove name" }[kind];
     const at = this.t[this.i - 1].end;
-    return new LoomError(`"${owner.text}" needs ${what} here, like  ${example}`, { start: owner.start, end: owner.end },
+    return new CannoliError(`"${owner.text}" needs ${what} here, like  ${example}`, { start: owner.start, end: owner.end },
       { label: `add${fill}`, start: at, end: at, text: fill });
   }
 
   numAtomArg(owner) {
     if (this.atEnd() || this.is(">") || this.is(")")) {
-      throw new LoomError(`"${owner.text}" needs a number here.`, owner, { label: "add 1", start: owner.end, end: owner.end, text: " 1" });
+      throw new CannoliError(`"${owner.text}" needs a number here.`, owner, { label: "add 1", start: owner.end, end: owner.end, text: " 1" });
     }
     return this.numAtom();
   }
@@ -404,7 +404,7 @@ class Parser {
 
   numAtom() {
     const tok = this.next();
-    if (!tok) throw new LoomError("Expected a number here.", this.endRange());
+    if (!tok) throw new CannoliError("Expected a number here.", this.endRange());
     if (tok.type === "num") return { k: "nnum", value: tok.value, src: tok };
     if (tok.text === "-") return { k: "nneg", x: this.numAtom() };
     if (tok.text === "(") {
@@ -413,7 +413,7 @@ class Parser {
       return inner;
     }
     if (tok.type === "name") return { k: "nname", name: tok.text, src: tok };
-    throw new LoomError(`Expected a number here, not "${tok.text}".`, tok);
+    throw new CannoliError(`Expected a number here, not "${tok.text}".`, tok);
   }
 
   cond() {
@@ -443,7 +443,7 @@ class Parser {
     const op = this.peek();
     if (!op || !CMP_OPS.has(op.text)) {
       const at = op ?? this.endRange();
-      throw new LoomError("A condition compares two numbers, like  bar > 8  or  bar % 4 == 0", at);
+      throw new CannoliError("A condition compares two numbers, like  bar > 8  or  bar % 4 == 0", at);
     }
     this.next();
     return { k: "cmp", op: op.text === "=" ? "==" : op.text, left, right: this.numExpr() };

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>loom</title>
-  <meta name="description" content="loom — a live-coding language where every thread shares one key and every change lands on the downbeat." />
+  <title>cannoli</title>
+  <meta name="description" content="cannoli — a live-coding language where every thread shares one key and every change lands on the downbeat." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 <body>
 
 <header class="top">
-  <h1 class="mark">loom<span class="mark-tilde">~</span></h1>
+  <h1 class="mark">cannoli<span class="mark-tilde">~</span></h1>
   <div class="status" aria-live="polite">
     <span class="st"><span class="st-k">key</span> <span id="stKey">—</span></span>
     <span class="st"><span class="st-k">chord</span> <span id="stChord">—</span></span>
@@ -29,6 +29,7 @@
       <span class="visually-hidden">Load an example</span>
       <select id="examples" aria-label="Load an example"></select>
     </label>
+    <a class="btn" href="sheet.html" target="_blank" rel="noopener" title="every verb, groove and style, with songs">sheet ↗</a>
     <button class="btn btn-play" id="playBtn" type="button" title="Ctrl+Enter"><span>play</span> <kbd data-mod>ctrl</kbd><kbd>↵</kbd></button>
     <button class="btn" id="stopBtn" type="button" title="Ctrl+. (shift: stop now)">stop <kbd data-mod>ctrl</kbd><kbd>.</kbd></button>
   </div>
@@ -71,7 +72,7 @@
         <li><kbd data-mod>ctrl</kbd>+<kbd>space</kbd> suggestions · <kbd>tab</kbd> insert</li>
         <li>hover an underline to see what's wrong</li>
       </ul>
-      <p class="dim">The full language guide is in the README.</p>
+      <p class="dim">Everything else is on the <a href="sheet.html" target="_blank" rel="noopener">cheat sheet ↗</a>.</p>
     </section>
   </aside>
 </main>
