@@ -12,7 +12,7 @@ body.sheet { display: block; height: auto; }
   gap: 18px;
   padding: 12px 24px;
   border-bottom: 1px solid var(--line);
-  background: rgba(13, 14, 25, 0.94);
+  background: var(--bg);
   backdrop-filter: blur(8px);
 }
 .sh-sub { font-weight: 400; color: var(--ink-dim); font-size: 15px; }
@@ -31,7 +31,7 @@ a.btn { text-decoration: none; }
   color: var(--ink);
 }
 .sh-section h2::before { content: "~ "; color: var(--accent); }
-.sh-section h3 { margin: 26px 0 8px; font-size: 14px; font-weight: 600; color: var(--t1); }
+.sh-section h3 { margin: 26px 0 8px; font-size: 14px; font-weight: 600; color: var(--soft); }
 .sh-intro { color: var(--ink-dim); margin: 0 0 12px; }
 .sh-section p { max-width: 75ch; }
 
@@ -47,7 +47,7 @@ a.btn { text-decoration: none; }
   white-space: pre;
 }
 .ed-hl.sh-inline { padding: 1px 6px; border-radius: 4px; background: var(--bg-3); font-size: 12.5px; white-space: nowrap; }
-.sh-name { color: var(--t1); font-weight: 600; white-space: nowrap; }
+.sh-name { color: var(--soft); font-weight: 600; white-space: nowrap; }
 
 .sh-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
 .sh-table th {

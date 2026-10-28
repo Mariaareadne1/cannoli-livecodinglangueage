@@ -9,6 +9,10 @@ import { Engine } from "./audio/engine.js";
 import { createEditor } from "./editor/editor.js";
 import { EXAMPLES } from "./examples.js";
 import { codeFromUrl } from "./share.js";
+import { THEMES, THEME_NAMES } from "./themes.js";
+import { applyTheme, savedTheme } from "./apply-theme.js";
+
+applyTheme(savedTheme());
 import { STYLES, STYLE_NAMES } from "./core/styles.js";
 
 const STORE_CODE = "cannoli-code";
@@ -250,6 +254,14 @@ $("examples").addEventListener("change", (e) => {
   editor.setValue(EXAMPLES[Number(e.target.value)].code);
   lint();
   say(`loaded "${EXAMPLES[Number(e.target.value)].name}" — ${EXAMPLES[Number(e.target.value)].note}. Ctrl+Enter to hear it.`);
+});
+
+/* theme */
+$("theme").innerHTML = THEME_NAMES.map((n) => `<option value="${n}">${n}</option>`).join("");
+$("theme").value = savedTheme();
+$("theme").addEventListener("change", (e) => {
+  applyTheme(e.target.value);
+  say(`theme: ${THEMES[e.target.value].label}`);
 });
 
 /* The style picker writes (or rewrites) the `style` line in the code. */

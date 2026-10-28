@@ -11,6 +11,9 @@ import { EXAMPLES } from "./examples.js";
 import { highlight } from "./editor/highlight.js";
 import { compile } from "./lang/compile.js";
 import { codeLink } from "./share.js";
+import { applyTheme, savedTheme } from "./apply-theme.js";
+
+applyTheme(savedTheme());
 
 const GROUP_TITLES = {
   order: "order — rearrange the notes",
