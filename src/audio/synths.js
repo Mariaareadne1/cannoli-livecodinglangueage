@@ -18,7 +18,14 @@ const ENVELOPES = {
   pluck:  { a: 0.002, d: 0.25, s: 0,   r: 0.12 },
   pad:    { a: 0.4,   d: 0.5,  s: 0.8, r: 0.9 },
   bell:   { a: 0.002, d: 1.2,  s: 0,   r: 0.8 },
+  supersaw: { a: 0.01, d: 0.3, s: 0.8, r: 0.25 },
+  acid:   { a: 0.003, d: 0.2,  s: 0.5, r: 0.08 },
+  stab:   { a: 0.002, d: 0.18, s: 0,   r: 0.1 },
+  sub:    { a: 0.005, d: 0.2,  s: 0.9, r: 0.1 },
+  boom:   { a: 0.002, d: 1.2,  s: 0.4, r: 0.4 },
 };
+// sounds whose filter snaps open then closes on each note: [opening, closing time, resonance]
+const FILTER_SWEEP = { pluck: [2.5, 0.08, 0.7], acid: [5, 0.12, 14], stab: [3, 0.06, 2] };
 
 const noiseCache = new WeakMap();
 
@@ -37,7 +44,7 @@ export function playNote(ctx, buses, note) {
   if (props.bloom > 0) sendTo(ctx, pan, buses.bloom, props.bloom);
 
   if (note.drum) {
-    DRUMS[note.drum](ctx, pan, note.time, clamp(props.gain, 0, 1) * 0.9);
+    DRUMS[note.drum](ctx, pan, note.time, clamp(props.gain, 0, 1) * 0.9, KITS[props.kit] ?? KITS.house);
     return;
   }
 
@@ -77,9 +84,12 @@ export function playNote(ctx, buses, note) {
   if (props.tape > 0) head = tapeSaturate(ctx, head, props.tape);
   head.connect(amp).connect(duck);
 
-  if (props.sound === "pluck") {
-    tone.frequency.setValueAtTime(tone.frequency.value * 2.5, note.time);
-    tone.frequency.setTargetAtTime(tone.frequency.value * 0.5, note.time, 0.08);
+  const sweep = FILTER_SWEEP[props.sound];
+  if (sweep) {
+    const [open, close, q] = sweep;
+    tone.Q.value = q;
+    tone.frequency.setValueAtTime(Math.min(18000, tone.frequency.value * open), note.time);
+    tone.frequency.setTargetAtTime(tone.frequency.value * 0.5, note.time, close);
   }
 
   const sources = note.midi.flatMap((m) => SOURCES[props.sound in SOURCES ? props.sound : "tri"](ctx, tone, mtof(m), note.time, stopAt));
@@ -96,6 +106,19 @@ const SOURCES = {
   sine: (ctx, dest, f, t, stop) => [osc(ctx, dest, "sine", f, t, stop, 0, 1)],
   pluck: (ctx, dest, f, t, stop) => [osc(ctx, dest, "sawtooth", f, t, stop, 0, 0.7), osc(ctx, dest, "triangle", f * 2, t, stop, 0, 0.3)],
   pad: (ctx, dest, f, t, stop) => [-10, 0, 10].map((cents) => osc(ctx, dest, "sawtooth", f, t, stop, cents, 0.35)),
+  supersaw: (ctx, dest, f, t, stop) => [-24, -14, -6, 0, 6, 14, 24].map((cents) => osc(ctx, dest, "sawtooth", f, t, stop, cents, 0.2)),
+  acid: (ctx, dest, f, t, stop) => [osc(ctx, dest, "sawtooth", f, t, stop, 0, 0.8)],
+  stab: (ctx, dest, f, t, stop) => [-8, 0, 8].map((cents) => osc(ctx, dest, "sawtooth", f, t, stop, cents, 0.4)),
+  sub: (ctx, dest, f, t, stop) => [osc(ctx, dest, "sine", f, t, stop, 0, 1), osc(ctx, dest, "triangle", f, t, stop, 0, 0.15)],
+  boom: (ctx, dest, f, t, stop) => {
+    const shaper = ctx.createWaveShaper();
+    shaper.curve = saturationCurve(3);
+    shaper.connect(dest);
+    const o = osc(ctx, shaper, "sine", f, t, stop, 0, 1.2);
+    o.frequency.setValueAtTime(f * 2.5, t);
+    o.frequency.exponentialRampToValueAtTime(f, t + 0.07);
+    return [o];
+  },
   bell: (ctx, dest, f, t, stop) => {
     const carrier = osc(ctx, dest, "sine", f, t, stop, 0, 1);
     const mod = ctx.createOscillator();
@@ -123,17 +146,54 @@ function osc(ctx, dest, type, freq, t, stop, cents, gain) {
 
 /* ---------- drums ---------- */
 
+/* Each style's drum kit: kick pitch sweep and decay, how bright and long the noise drums are. */
+const KITS = {
+  house: { kick: [150, 45, 0.11, 0.32, 1.4], snareHz: 1900, snareDecay: 0.16, hatDecay: 0.045, hatLevel: 0.55, clapDecay: 0.14, click: 0 },
+  hard:  { kick: [190, 48, 0.08, 0.45, 1.7], snareHz: 2200, snareDecay: 0.2, hatDecay: 0.05, hatLevel: 0.7, clapDecay: 0.22, click: 0.6 },
+  funk:  { kick: [120, 38, 0.16, 0.7, 1.6], snareHz: 2600, snareDecay: 0.1, hatDecay: 0.035, hatLevel: 0.5, clapDecay: 0.1, click: 0.3 },
+  soft:  { kick: [110, 50, 0.1, 0.25, 0.9], snareHz: 900, snareDecay: 0.22, hatDecay: 0.03, hatLevel: 0.35, clapDecay: 0.12, click: 0 },
+};
+
 const DRUMS = {
-  kick: (ctx, out, t, v) => sweep(ctx, out, t, v * 1.4, 150, 45, 0.11, 0.32),
-  tom: (ctx, out, t, v) => sweep(ctx, out, t, v, 220, 110, 0.18, 0.35),
-  snare: (ctx, out, t, v) => {
-    sweep(ctx, out, t, v * 0.5, 210, 180, 0.05, 0.09);
-    burst(ctx, out, t, v * 0.9, "bandpass", 1900, 0.8, 0.16);
+  kick: (ctx, out, t, v, kit) => {
+    const [from, to, glide, decay, level] = kit.kick;
+    sweep(ctx, out, t, v * level, from, to, glide, decay);
+    if (kit.click) burst(ctx, out, t, v * kit.click, "highpass", 3000, 0.7, 0.012);
   },
-  hat: (ctx, out, t, v) => burst(ctx, out, t, v * 0.55, "highpass", 7500, 0.7, 0.045),
-  open: (ctx, out, t, v) => burst(ctx, out, t, v * 0.45, "highpass", 7000, 0.7, 0.3),
-  clap: (ctx, out, t, v) => [0, 0.012, 0.024].forEach((d, i) => burst(ctx, out, t + d, v * 0.8, "bandpass", 1200, 1.2, i === 2 ? 0.14 : 0.02)),
+  tom: (ctx, out, t, v) => sweep(ctx, out, t, v, 220, 110, 0.18, 0.35),
+  snare: (ctx, out, t, v, kit) => {
+    sweep(ctx, out, t, v * 0.5, 210, 180, 0.05, 0.09);
+    burst(ctx, out, t, v * 0.9, "bandpass", kit.snareHz, 0.8, kit.snareDecay);
+  },
+  hat: (ctx, out, t, v, kit) => burst(ctx, out, t, v * kit.hatLevel, "highpass", 7500, 0.7, kit.hatDecay),
+  open: (ctx, out, t, v, kit) => burst(ctx, out, t, v * kit.hatLevel * 0.8, "highpass", 7000, 0.7, 0.3),
+  clap: (ctx, out, t, v, kit) => [0, 0.012, 0.024].forEach((d, i) =>
+    burst(ctx, out, t + d, v * 0.8, "bandpass", 1200, 1.2, i === 2 ? kit.clapDecay : 0.02)),
   rim: (ctx, out, t, v) => burst(ctx, out, t, v * 1.6, "bandpass", 1700, 6, 0.03),
+  cowbell: (ctx, out, t, v) => {
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.frequency.value = 800;
+    band.Q.value = 3;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(Math.max(0.0001, v * 0.6), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+    band.connect(g).connect(out);
+    [540, 800].forEach((hz) => osc(ctx, band, "square", hz, t, t + 0.27, 0, 0.5));
+  },
+  shaker: (ctx, out, t, v) => {
+    const src = ctx.createBufferSource();
+    src.buffer = noise(ctx);
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass";
+    band.frequency.value = 6000;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(v * 0.35, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    src.connect(band).connect(g).connect(out);
+    startStop([src], t, t + 0.1);
+  },
 };
 
 function sweep(ctx, out, t, v, from, to, glide, decay) {

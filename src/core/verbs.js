@@ -10,12 +10,20 @@
                     pat  a pattern
    ============================================================ */
 
+import { BEATS } from "./styles.js";
 import {
   Pattern, sequence, stack, fast, slow, mapEvents, mapNotes, setProps, when, sorted, mod, rand, pure, silence,
 } from "./pattern.js";
 
-const SOUNDS = ["saw", "square", "tri", "sine", "pluck", "pad", "bell"];
-const DRUMS = ["kick", "snare", "hat", "open", "clap", "rim", "tom"];
+const SOUNDS = ["saw", "square", "tri", "sine", "pluck", "pad", "bell", "supersaw", "acid", "stab", "sub", "boom"];
+const DRUMS = ["kick", "snare", "hat", "open", "clap", "rim", "tom", "cowbell", "shaker"];
+const SOUND_DOCS = {
+  supersaw: "a wide stack of detuned saws: the classic rave lead",
+  acid: "a squelchy resonant bass, 303-style",
+  stab: "a short, punchy chord stab",
+  sub: "a deep, clean sub bass",
+  boom: "a pitched 808 boom that slides down into the note",
+};
 const EFFECT_DEFAULT = { bloom: 0.5, ghost: 0.5, tape: 0.5, pump: 0.6, air: 0.4 };
 
 /** @type {Record<string, { group: string, args: string[], doc: string, example: string, apply: Function }>} */
@@ -79,10 +87,14 @@ export const VERBS = {
       })));
     })),
   stack: verb("structure", ["pat"], "plays another pattern at the same time", "theme > stack (theme + 4)", (p, [q]) => stack([p, q])),
-  mask: verb("structure", ["pat"], "only lets notes through where the other pattern has a hit", "chord > mask (hits 5 8)", (p, [q]) =>
+  mask: verb("structure", ["pat"], "a gate: notes only sound where the other pattern has hits, cut to fit them", "chord > mask (beat tresillo)", (p, [q]) =>
     new Pattern((c, ctx) => {
       const gates = q.query(c, ctx);
-      return p.query(c, ctx).filter((e) => gates.some((g) => e.start >= g.start - 1e-9 && e.start < g.start + g.dur - 1e-9));
+      return p.query(c, ctx).flatMap((e) => gates.flatMap((g) => {
+        const start = Math.max(e.start, g.start);
+        const end = Math.min(e.start + e.dur, g.start + g.dur);
+        return end - start > 1e-9 ? [{ ...e, start, dur: end - start }] : [];
+      }));
     }, p.len)),
 
   /* change over time */
@@ -116,7 +128,7 @@ export const VERBS = {
 
 for (const name of [...SOUNDS, ...DRUMS]) {
   const isDrum = DRUMS.includes(name);
-  VERBS[name] = verb("sound", [], isDrum ? `plays a ${name} on every note` : `plays the notes with the ${name} sound`,
+  VERBS[name] = verb("sound", [], isDrum ? `plays a ${name} on every note` : SOUND_DOCS[name] ?? `plays the notes with the ${name} sound`,
     isDrum ? `hits 4 16 > ${name}` : `theme > ${name}`, (p) => setProps(p, { sound: name }));
 }
 
@@ -155,6 +167,10 @@ export const GENERATORS = {
   rand: gen(["num"], "n random notes from the key, new every bar", "rand 4 > slow 2", ([n], src, seed) =>
     perCycle((ctx) => Array.from({ length: Math.max(1, Math.round(n(ctx))) }, (_, i) =>
       note(Math.floor(rand(ctx.bar, i, seed, 3) * 8), src)))),
+  beat: gen(["word"], `a named groove: ${Object.keys(BEATS).join(", ")}`, "beat tamborzao > kick", ([name], src) => {
+    const steps = BEATS[name].steps;
+    return sequence([...steps].map((c) => ({ pattern: c === "x" ? note(0, src) : silence, weight: 1 })));
+  }),
   chord: gen([], "the current chord from the chords line, all at once", "chord > slow 2 > pad", (args, src) =>
     new Pattern((c, ctx) => [{ start: 0, dur: 1, notes: ctx.chord.map((deg) => ({ deg, alt: 0 })), props: {}, src: [src] }])),
 };

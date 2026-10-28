@@ -8,10 +8,12 @@
 
 import { DRUM_NAMES } from "./verbs.js";
 import { chordTones, lockToChord, snapPenta, toMidi, voiceChord } from "./harmony.js";
+import { STYLES } from "./styles.js";
 
 const EPS = 1e-6;
 const DEFAULTS = { sound: "tri", range: "mid", lock: "beat", gain: 0.7, bright: 0.6, pan: 0, len: 1,
   bloom: 0, ghost: 0, tape: 0, pump: 0, air: 0 };
+const BASS_SOUNDS = ["sub", "boom"];   // these default to the low range
 const GHOST_REPEATS = 3;
 const GHOST_STEP_BEATS = 0.75;   // a dotted eighth
 const GHOST_DECAY = 0.55;
@@ -39,12 +41,14 @@ export function renderBar(program, bar) {
   const { key, degree } = harmonyAt(settings, bar);
   const chord = chordTones(degree);
   const ctx = { bar, chord, vars: {}, seed: 0 };
+  const kit = STYLES[settings.style]?.kit ?? "house";
 
   return threads.flatMap((thread, threadIndex) =>
     thread.pattern.query(bar, ctx)
       .filter((e) => e.start >= -EPS && e.start < 1 - EPS)
       .flatMap((e) => {
-        const props = { ...DEFAULTS, ...e.props };
+        const props = { ...DEFAULTS, kit, ...e.props };
+        if (!e.props.range && BASS_SOUNDS.includes(props.sound)) props.range = "low";
         const start = swing(e.start, settings);
         const base = { thread: thread.name, threadIndex, start, dur: e.dur * props.len, props, src: e.src };
         if (DRUM_NAMES.includes(props.sound)) return [{ ...base, midi: [], drum: props.sound }];

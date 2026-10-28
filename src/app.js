@@ -8,6 +8,7 @@ import { compile } from "./lang/compile.js";
 import { Engine } from "./audio/engine.js";
 import { createEditor } from "./editor/editor.js";
 import { EXAMPLES } from "./examples.js";
+import { STYLES, STYLE_NAMES } from "./core/styles.js";
 
 const STORE_CODE = "loom-code";
 const STORE_PREFS = "loom-prefs";
@@ -35,8 +36,9 @@ const editor = createEditor($("editor"), {
 function lint() {
   const result = compile(editor.value);
   state.result = result;
-  const keyMode = result.program.settings.keys[0]?.mode;
-  editor.setSymbols({ ...result.symbols, keyMode });
+  const { settings } = result.program;
+  editor.setSymbols({ ...result.symbols, keyMode: settings.keys[0]?.mode, style: settings.style });
+  $("style").value = settings.style ?? "";
   const problems = [
     ...result.errors.map((e) => problem(e, "error")),
     ...result.warnings.map((e) => problem(e, "warning")),
@@ -244,6 +246,27 @@ $("examples").addEventListener("change", (e) => {
   say(`loaded "${EXAMPLES[Number(e.target.value)].name}" — ${EXAMPLES[Number(e.target.value)].note}. Ctrl+Enter to hear it.`);
 });
 
+/* The style picker writes (or rewrites) the `style` line in the code. */
+$("style").innerHTML = `<option value="">no style</option>${STYLE_NAMES.map((n) => `<option value="${n}">${n}</option>`).join("")}`;
+$("style").addEventListener("change", (e) => {
+  const name = e.target.value;
+  const text = editor.value;
+  const existing = text.match(/^style\b.*$/m);
+  if (existing) {
+    const start = existing.index;
+    const end = start + existing[0].length + (name ? 0 : 1);
+    editor.applyFix({ start, end, text: name ? `style ${name}` : "" });
+  } else if (name) {
+    const firstCode = text.match(/^(?!\s*#)\S/m)?.index ?? 0;
+    editor.applyFix({ start: firstCode, end: firstCode, text: `style ${name}\n` });
+  }
+  lint();
+  const starter = EXAMPLES.find((ex) => ex.name.startsWith(`${name} ·`));
+  say(name
+    ? `style ${name}: ${STYLES[name].doc}. Suggestions now favour it.${starter ? ` For a starting point, load "${starter.name}".` : ""}`
+    : "no style: back to the neutral defaults");
+});
+
 $("quantize").value = prefs.quantize;
 $("quantize").addEventListener("change", (e) => savePrefs({ quantize: e.target.value }));
 $("autofix").checked = prefs.autofix;
@@ -262,7 +285,7 @@ function say(message, tone = "") {
   el.textContent = message;
   el.classList.toggle("bad", tone === "bad");
   clearTimeout(sayTimer);
-  sayTimer = setTimeout(() => { el.textContent = ""; }, 4000);
+  sayTimer = setTimeout(() => { el.textContent = ""; }, 4000 + message.length * 30);
 }
 
 function flash(id) {

@@ -14,8 +14,10 @@ import {
   Pattern, pure, silence, sequence, stack, chordOf, then, times, choose, mapNotes, sorted, mod,
 } from "../core/pattern.js";
 import { MODES, pitchClass, chordDegree } from "../core/harmony.js";
+import { STYLES, STYLE_NAMES } from "../core/styles.js";
 
 export const DEFAULT_KEY = { at: 0, root: 2, mode: "minor", name: "d minor" };
+const DEFAULT_TEMPO = 100;
 
 /**
  * @typedef {{ tempo: number, beats: number, swing: number,
@@ -82,7 +84,7 @@ class Compiler {
   /* ---------- settings ---------- */
 
   settings() {
-    const s = { tempo: 100, beats: 4, swing: 0, keys: [], chords: [] };
+    const s = { tempo: null, beats: 4, swing: null, style: null, keys: [], chords: [] };
     for (const a of this.asts.filter((x) => x.k === "setting")) {
       this.guard(a, () => {
         if (a.value) {
@@ -94,11 +96,18 @@ class Compiler {
           s[a.name] = a.name === "beats" ? Math.round(v) : v;
           return;
         }
+        if (a.name === "style") {
+          s.style = this.style(a);
+          return;
+        }
         const at = a.at ? Math.max(1, Math.round(this.num(a.at, emptyEnv())({ bar: 0, vars: {} }))) - 1 : 0;
         if (a.name === "key") s.keys.push({ at, ...this.key(a) });
         else s.chords.push({ at, ...this.chordLine(a) });
       });
     }
+    const style = STYLES[s.style];
+    s.tempo ??= style?.tempo ?? DEFAULT_TEMPO;
+    s.swing ??= style?.swing ?? 0;
     if (!s.keys.some((k) => k.at === 0)) s.keys.push(DEFAULT_KEY);
     if (!s.chords.some((c) => c.at === 0)) s.chords.push({ at: 0, degrees: [0], names: ["i"] });
     s.keys.sort((x, y) => x.at - y.at);
@@ -118,6 +127,15 @@ class Compiler {
         guess ? { label: `change to "${guess}"`, start: mode.start, end: mode.end, text: guess } : undefined);
     }
     return { root, mode: modeName, name: `${note.text} ${modeName}` };
+  }
+
+  style(a) {
+    const [word] = a.args;
+    if (!word) throw new LoomError(`Name a style: ${STYLE_NAMES.join(", ")}.`, a.src, { label: "add rave", start: a.src.end, end: a.src.end, text: " rave" });
+    if (STYLES[word.text]) return word.text;
+    const guess = closest(word.text, STYLE_NAMES);
+    throw new LoomError(`"${word.text}" isn't a style. Try: ${STYLE_NAMES.join(", ")}.`, word,
+      guess ? { label: `change to "${guess}"`, start: word.start, end: word.end, text: guess } : undefined);
   }
 
   chordLine(a) {
@@ -289,6 +307,7 @@ class Compiler {
       const a = asts[i];
       if (a === null || a === undefined) return null;
       if (kind === "num" || kind === "num?") return this.num(a, env);
+      if (kind === "word") return a;
       if (kind === "step" || kind === "else?") return (q) => this.step(a, q, env);
       if (kind === "cond") return this.cond(a, env);
       return this.expr(a, env);
@@ -343,7 +362,7 @@ class Compiler {
 
   rangeWarnings() {
     const melodic = this.asts.filter((a) => a.k === "thread" && !usesVerb(a.body, DRUM_NAMES));
-    const unplaced = melodic.filter((a) => !usesVerb(a.body, ["low", "mid", "high"]));
+    const unplaced = melodic.filter((a) => !usesVerb(a.body, ["low", "mid", "high", "sub", "boom"]));
     unplaced.slice(1).forEach((a, i) => {
       const end = a.statement.end;
       const other = unplaced[i].name;

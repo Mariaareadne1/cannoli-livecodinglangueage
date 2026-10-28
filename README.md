@@ -36,6 +36,7 @@ at the end of the bar.
 | `chords i VI III VII` | a chord progression, one chord per bar, looping (roman numerals or 1–7) |
 | `key g major at 17` | change key from bar 17 (also works for `chords`) |
 | `swing 0.2` | push off-beat eighths late |
+| `style rave` | a feel: rave, house, funk or chill (see Styles) |
 | `name: …` | a **thread**: plays |
 | `name = …` | a **variable**: a pattern or a number, doesn't play |
 | `def name a b = …` | a **function** you can use like a verb |
@@ -60,6 +61,7 @@ One bar is one cycle. A pattern divides the bar evenly between its steps.
 | `run 5` | 0 1 2 3 4 |
 | `walk 8` | 8 steps of a random walk, new every bar |
 | `rand 4` | 4 random steps, new every bar |
+| `beat tamborzao` | a named groove (see Styles) |
 
 ## Arithmetic: patterns are numbers
 
@@ -94,7 +96,7 @@ lead: theme > maybe 0.3 shuffle           # 30% of bars
 | change over time | `every n verb` `when cond verb` `maybe p verb` `sometimes verb` `drift n` |
 | range | `low` `mid` `high` |
 | harmony | `free` (ignore the chord lock) `tight` (lock every note) |
-| sound | `saw` `square` `tri` `sine` `pluck` `pad` `bell` · drums: `kick` `snare` `hat` `open` `clap` `rim` `tom` |
+| sound | `saw` `square` `tri` `sine` `pluck` `pad` `bell` `supersaw` `acid` `stab` `sub` `boom` · drums: `kick` `snare` `hat` `open` `clap` `rim` `tom` `cowbell` `shaker` |
 | color | `bright n` `gain n` `pan n` |
 | signature effects | `bloom` `ghost` `tape` `pump` `air` (each takes an optional amount 0–1) |
 
@@ -108,6 +110,52 @@ def lift n = up n > fast 2       # a new verb
 def motif n = 0 2 4 + n          # a new pattern
 lead: motif 1 > every 2 (lift 3)
 ```
+
+## Styles
+
+One line sets the feel. It changes the defaults (tempo, swing, drum kit,
+mix) and what the suggestion cards put first. It never changes the language.
+
+| Style | Tempo | Feel |
+|---|---|---|
+| `style rave` | 140 | fast, hard, driving: warehouse and hard dance |
+| `style house` | 124 | four on the floor, warm and bouncy |
+| `style funk` | 130 | Brazilian funk: tamborzão rhythm and booming 808s |
+| `style chill` | 80 | slow and warm, swung: lo-fi and downtempo |
+
+A `tempo` line still wins over the style's tempo. The style menu in the
+header writes the `style` line for you, and each style has a starter piece.
+
+### Grooves
+
+`beat name` plays a named 16-step rhythm, like any other pattern:
+
+| Groove | Pattern | |
+|---|---|---|
+| `fourfloor` | `x...x...x...x...` | a kick on every beat |
+| `offbeat` | `..x...x...x...x.` | between the beats |
+| `backbeat` | `....x.......x...` | beats 2 and 4 |
+| `rolling` | `.xxx.xxx.xxx.xxx` | a rolling rave bassline |
+| `gallop` | `x.xxx.xxx.xxx.xx` | hard dance |
+| `shuffle` | `x.xx.xxxx.xx.xxx` | busy hats |
+| `skip` | `x..x.x..x..x.x..` | syncopated |
+| `tamborzao` | `x..x..x...x..x..` | baile funk's 3-3-4-3-3 |
+| `tresillo` | `x..x..x.x..x..x.` | 3-3-2 |
+| `batida` | `x...x.x.x...x.x.` | boom, ta-ta |
+| `boombap` | `x......x..x.....` | laid-back hip-hop |
+| `lazy` | `x.......x..x....` | sparse downtempo |
+
+```
+kick: beat tamborzao > kick
+stab: chord > mask (beat tresillo) > stab
+```
+
+### Electronic sounds
+
+`supersaw` (wide rave lead), `acid` (squelchy 303-style bass), `stab`
+(punchy chord stab), `sub` (deep sub bass), `boom` (a pitched 808 that slides
+into the note), plus drums `cowbell` and `shaker`. `sub` and `boom` sit in the
+bass range on their own.
 
 ## Always sounds good
 

@@ -12,6 +12,7 @@
 
 import { renderBar, harmonyAt } from "../core/render.js";
 import { MODES } from "../core/harmony.js";
+import { STYLES } from "../core/styles.js";
 import { playNote, saturationCurve, noise, mtof } from "./synths.js";
 
 const TICK_MS = 25;
@@ -21,7 +22,13 @@ const PHRASE_BARS = 4;
 const FADE_S = 0.25;
 const RESONATOR_OCTAVES = [3, 4, 5, 6];
 const KEEP_BARS = 3;
-const MASTER_LEVEL = 0.85;   // headroom so kick transients that slip past the limiter don't clip
+const MASTER_LEVEL = 0.85;
+// each style's mix: saturation drive, glue compressor threshold (dB), and master tone (Hz)
+const MIXES = {
+  clean: { drive: 1.4, threshold: -18, tone: 20000 },
+  hard:  { drive: 2.4, threshold: -22, tone: 20000 },
+  lofi:  { drive: 1.9, threshold: -20, tone: 6500 },
+};   // headroom so kick transients that slip past the limiter don't clip
 
 export class Engine {
   constructor() {
@@ -128,6 +135,7 @@ export class Engine {
     const duckTimes = notes.filter((n) => n.drum === "kick").map((n) => time + n.start * seconds);
 
     this.tuneBloom(program, bar, time);
+    this.applyMix(STYLES[program.settings.style]?.mix ?? "clean", time);
     for (const n of notes) {
       playNote(this.ctx, this.buses, {
         midi: n.midi,
@@ -200,7 +208,13 @@ export class Engine {
     limiter.release.value = 0.1;
     this.master = ctx.createGain();
     this.master.gain.value = MASTER_LEVEL;
-    input.connect(warm).connect(glue).connect(limiter).connect(this.master).connect(ctx.destination);
+    const masterTone = ctx.createBiquadFilter();
+    masterTone.type = "lowpass";
+    masterTone.frequency.value = 20000;
+    masterTone.Q.value = 0.5;
+    input.connect(warm).connect(masterTone).connect(glue).connect(limiter).connect(this.master).connect(ctx.destination);
+    this.mixNodes = { warm, glue, masterTone };
+    this.mix = "clean";
 
     const room = ctx.createConvolver();
     room.buffer = impulse(ctx, 1.1, 3);
@@ -228,6 +242,16 @@ export class Engine {
     bloomOut.connect(input);
 
     this.buses = { out: input, room, bloom };
+  }
+
+  applyMix(name, time) {
+    if (name === this.mix) return;
+    this.mix = name;
+    const mix = MIXES[name];
+    const { warm, glue, masterTone } = this.mixNodes;
+    warm.curve = saturationCurve(mix.drive);
+    glue.threshold.setValueAtTime(mix.threshold, time);
+    masterTone.frequency.setTargetAtTime(mix.tone, time, 0.2);
   }
 
   tuneBloom(program, bar, time) {

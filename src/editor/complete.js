@@ -7,7 +7,7 @@
 
 import { VERBS, GENERATORS } from "../core/verbs.js";
 import { MODES, chordDegree } from "../core/harmony.js";
-import { SETTINGS } from "../lang/parser.js";
+import { STYLES, STYLE_NAMES, BEATS } from "../core/styles.js";
 
 const NOTE_NAMES = ["c", "c#", "d", "eb", "e", "f", "f#", "g", "ab", "a", "bb", "b"];
 const PROGRESSIONS = {
@@ -18,6 +18,7 @@ const ROMAN = { major: ["I", "ii", "iii", "IV", "V", "vi", "vii"], minor: ["i", 
 const NEXT_CHORD = { 0: [3, 4, 5], 1: [4, 6], 2: [5, 3], 3: [4, 0, 1], 4: [0, 5], 5: [3, 1, 4], 6: [0, 2] };
 const STEP_AFTER = /(?:>|\(|\bevery\s+\S+|\bmaybe\s+\S+|\bsometimes|\belse)\s*$/;
 const LINE_STARTERS = [
+  { label: "style", insert: "style ", detail: "style rave", doc: "a feel: rave, house, funk or chill. Sets tempo, drums and mix, and what gets suggested" },
   { label: "key", insert: "key d minor", detail: "key d minor", doc: "the key every thread shares" },
   { label: "tempo", insert: "tempo 100", detail: "tempo 100", doc: "beats per minute" },
   { label: "chords", insert: "chords ", detail: "chords i VI III VII", doc: "a chord progression, one chord per bar" },
@@ -30,7 +31,7 @@ const LINE_STARTERS = [
  * @typedef {{ label: string, insert: string, detail: string, doc: string, kind: string }} Suggestion
  * @param {string} text
  * @param {number} cursor
- * @param {{ vars?: string[], defs?: string[], keyMode?: string }} [symbols]
+ * @param {{ vars?: string[], defs?: string[], keyMode?: string, style?: string }} [symbols]
  * @param {{ force?: boolean }} [opts]  force: show suggestions even with nothing typed
  * @returns {{ from: number, to: number, items: Suggestion[] }}
  */
@@ -54,9 +55,11 @@ function candidates(head, statement, symbols, typed) {
   const minor = (symbols.keyMode ? MODES[symbols.keyMode]?.[2] !== 4 : true);
 
   if (trimmed === "" && !/^\s+$/.test(head)) return typed ? LINE_STARTERS.map((s) => ({ ...s, kind: "line" })) : [];
+  if (/^style\s+$/.test(head)) return STYLE_NAMES.map((n) => item(n, "style", `style ${n} · ${STYLES[n].tempo} bpm`, STYLES[n].doc));
+  if (/\bbeat\s+$/.test(head)) return beatSuggestions(symbols.style);
   if (/^key\s+$/.test(head)) return NOTE_NAMES.map((n) => item(n, "note", `key ${n} …`, "the key's home note"));
   if (/^key\s+\S+\s+$/.test(head)) return Object.keys(MODES).map((m) => item(m, "mode", `key d ${m}`, MODE_DOCS[m]));
-  if (/^chords\b/.test(head)) return chordSuggestions(head, minor ? "minor" : "major");
+  if (/^chords\b/.test(head)) return chordSuggestions(head, minor ? "minor" : "major", symbols.style);
   if (STEP_AFTER.test(head)) return verbSuggestions(symbols);
   if (/[:=]/.test(statement) && typed) return patternSuggestions(symbols);
   return [];
@@ -66,7 +69,7 @@ function verbSuggestions(symbols) {
   const verbs = Object.entries(VERBS).map(([name, v]) =>
     item(name, v.group, signature(name, v.args), v.doc, v.example, v.args.length && !v.args[0].endsWith("?") ? `${name} ` : name));
   const defs = (symbols.defs ?? []).map((name) => item(name, "yours", `${name} …`, "a verb you defined"));
-  return [...defs, ...verbs];
+  return [...defs, ...styleFirst(verbs, STYLES[symbols.style]?.sounds, symbols.style)];
 }
 
 function patternSuggestions(symbols) {
@@ -81,17 +84,32 @@ function patternSuggestions(symbols) {
   return [...vars, ...gens, ...words];
 }
 
-function chordSuggestions(head, quality) {
+function chordSuggestions(head, quality, style) {
   const names = ROMAN[quality];
   const written = head.trim().split(/\s+/).slice(1);
   if (written.length === 0) {
-    return PROGRESSIONS[quality].map(([prog, doc]) => item(prog, "progression", `chords ${prog}`, doc));
+    const fitting = (STYLES[style]?.progressions ?? []).map(([prog, doc]) => item(prog, `fits ${style}`, `chords ${prog}`, doc));
+    const general = PROGRESSIONS[quality].map(([prog, doc]) => item(prog, "progression", `chords ${prog}`, doc));
+    return [...fitting, ...general.filter((g) => !fitting.some((f) => f.label === g.label))];
   }
   const last = chordDegree(written[written.length - 1]);
   const next = last === null ? [] : NEXT_CHORD[last];
   const likely = next.map((d) => item(names[d], "next chord", `${names[d]} after ${written[written.length - 1]}`, "a strong next chord"));
   const rest = names.filter((_, d) => !next.includes(d)).map((n) => item(n, "chord", n, "a chord in this key"));
   return [...likely, ...rest];
+}
+
+function beatSuggestions(style) {
+  const all = Object.entries(BEATS).map(([name, b]) => item(name, "groove", `beat ${name}  ${b.steps}`, b.doc));
+  return styleFirst(all, STYLES[style]?.beats, style);
+}
+
+/* Put the style's favourites first and tag them. */
+function styleFirst(items, favourites = [], style = "") {
+  if (!favourites.length) return items;
+  const picked = favourites.map((name) => items.find((i) => i.label === name)).filter(Boolean)
+    .map((i) => ({ ...i, kind: `fits ${style}` }));
+  return [...picked, ...items.filter((i) => !favourites.includes(i.label))];
 }
 
 const MODE_DOCS = {

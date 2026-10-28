@@ -17,8 +17,9 @@
 
 import { LoomError, closest } from "./errors.js";
 import { VERBS, GENERATORS } from "../core/verbs.js";
+import { BEATS } from "../core/styles.js";
 
-export const SETTINGS = ["key", "tempo", "beats", "chords", "swing"];
+export const SETTINGS = ["key", "tempo", "beats", "chords", "swing", "style"];
 export const KEYWORDS = ["def", "then", "x", "for", "if", "else", "and", "or", "not", "bar", "at"];
 const SEQ_STOP_OPS = new Set([">", ")", "]", ",", "+", "-", "*", "/", "%", "==", "!=", "<", "<=", ">=", ".."]);
 const SEQ_STOP_NAMES = new Set(["then", "x", "else", "and", "or"]);
@@ -103,7 +104,8 @@ class Parser {
     const name = this.next();
     this.next(); // : or =
     // thread names are never referenced, so `pad:` or `kick:` is fine; variables must not shadow words
-    const reserved = GENERATORS[name.text] || KEYWORDS.includes(name.text) || SETTINGS.includes(name.text) || (kind === "var" && VERBS[name.text]);
+    const reserved = KEYWORDS.includes(name.text) || SETTINGS.includes(name.text)
+      || (kind === "var" && (VERBS[name.text] || GENERATORS[name.text]));
     if (reserved) {
       throw new LoomError(`"${name.text}" already means something in loom. Pick another name.`, name);
     }
@@ -342,16 +344,27 @@ class Parser {
       }
       if (this.atEnd() || this.is(">") || this.is(")")) throw this.missingArg(kind, owner);
       if (kind === "num") return atomsOnly ? this.numAtom() : this.numExpr();
+      if (kind === "word") return this.word(owner);
       if (kind === "cond") return this.cond();
       if (kind === "step") return this.step();
       return this.item();
     });
   }
 
+  /* A plain name argument, checked against the generator's list (beat fourfloor). */
+  word(owner) {
+    const tok = this.next();
+    const options = Object.keys(BEATS);
+    if (tok.type === "name" && options.includes(tok.text)) return tok.text;
+    const guess = tok.type === "name" ? closest(tok.text, options) : null;
+    throw new LoomError(`"${tok.text}" isn't a groove. Try: ${options.join(", ")}.`, tok,
+      guess ? { label: `change to "${guess}"`, start: tok.start, end: tok.end, text: guess } : undefined);
+  }
+
   missingArg(kind, owner) {
     const example = VERBS[owner.text]?.example ?? GENERATORS[owner.text]?.example ?? "";
-    const fill = { step: " rev", pat: " (0 4)", cond: " bar > 4", num: " 2" }[kind];
-    const what = { step: "a verb", pat: "a pattern", cond: "a condition", num: "a number" }[kind];
+    const fill = { step: " rev", pat: " (0 4)", cond: " bar > 4", num: " 2", word: " fourfloor" }[kind];
+    const what = { step: "a verb", pat: "a pattern", cond: "a condition", num: "a number", word: "a groove name" }[kind];
     const at = this.t[this.i - 1].end;
     return new LoomError(`"${owner.text}" needs ${what} here, like  ${example}`, { start: owner.start, end: owner.end },
       { label: `add${fill}`, start: at, end: at, text: fill });
