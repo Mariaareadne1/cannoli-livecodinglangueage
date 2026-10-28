@@ -207,7 +207,7 @@ themselves:
 |---|---|---|
 | editor | `node cli/cannoli.js edit song.cannoli` | an empty page with a title bar; it plays the music |
 | guide | `node cli/cannoli.js guide` | explains the line you're on, shows problems and fixes as you type, suggests what's next; **tab** switches to the full reference |
-| visual | `node cli/cannoli.js visual` | an ASCII shark drifting through a dotted sea; it swells on the kick and lets off a bubble per note |
+| visual | `node cli/cannoli.js visual` | an ASCII shark drifting through a dotted sea; it swells on the kick and lets off a bubble per note. A beat layer adds ripples on each kick, a glyph tide along the bottom (one band per thread) and dots that flash on the beat. **v** cycles: both · shark only · beat only |
 | threads | `node cli/cannoli.js threads` | the beat grid (add `--threads` to `stage`) |
 
 Editor keys:
@@ -217,6 +217,7 @@ Editor keys:
 | `ctrl+s` | play, or apply changes on the next bar (also saves) |
 | `ctrl+t` | stop at the end of the bar (twice: now) |
 | `tab` | accept the suggestion card that pops up as you type (`↑ ↓` choose, `esc` closes) |
+| `ctrl+e` | choose a style (rave, house, funk, chill, none) — rewrites the `style` line; if playing, it lands on the next bar |
 | `ctrl+f` | apply the fix for the problem on this line |
 | `ctrl+g` | next theme |
 | `ctrl+z` / `ctrl+y` | undo / redo |

@@ -21,6 +21,11 @@ const BUBBLE_RISE = 5;              // physical units per second
 const ROW_UNITS = 2;                // physical height of one row
 const DOT_EVERY_COL = 4;
 const DOT_EVERY_ROW = 2;
+// the beat layer
+const RIPPLE_LIFE = 1.4;            // seconds a kick ripple spreads
+const RIPPLE_SPEED = 26;            // physical units per second
+const RIPPLE_WIDTH = 1.6;           // ring thickness, physical units
+const TIDE_SHARE = 0.22;            // the tide uses up to this much of the pane's height
 
 /* ---------- small numeric helpers ---------- */
 
@@ -204,11 +209,59 @@ function bodyCell(cx, cy, k, bg, time, flickerRate, c) {
   return { ch, fg };
 }
 
+/* ---------- the beat layer ---------- */
+
+/* How strongly a cell sits on a kick ripple's ring (0 = not at all). Rings spread from the creature. */
+function rippleAt(ripples, x, y, centre, period) {
+  let best = 0;
+  for (const age of ripples) {
+    let dx = (((x - centre.x) % period) + period) % period;
+    if (dx > period / 2) dx -= period;
+    const dist = Math.hypot(dx, y - centre.y);
+    const radius = age * RIPPLE_SPEED;
+    const onRing = 1 - Math.abs(dist - radius) / RIPPLE_WIDTH;
+    if (onRing > 0) best = Math.max(best, onRing * (1 - age / RIPPLE_LIFE));
+  }
+  return best;
+}
+
+/* The tide: one band of glyph columns per thread along the bottom, each as tall as its thread is busy. */
+function tideHeights(levels, width, height) {
+  const rows = Math.max(2, Math.floor(height * TIDE_SHARE));
+  const bands = Math.max(1, levels.length);
+  if (!levels.some((l) => l > 0.01)) return null;
+  return {
+    cell(cx, cy, time) {
+      const fromBottom = height - 1 - cy;
+      if (fromBottom >= rows) return null;
+      const band = Math.min(bands - 1, Math.floor((cx / width) * bands));
+      const level = levels[band] ?? 0;
+      const wobble = 0.7 + 0.3 * Math.sin(cx * 0.9 + time * 3 + band);
+      const columnHeight = level * rows * wobble;
+      if (fromBottom >= columnHeight) return null;
+      return { band, top: fromBottom >= columnHeight - 1, k: clamp01(1 - fromBottom / Math.max(1, columnHeight)) };
+    },
+  };
+}
+
+function tideColours(cell, c, cx, cy, time) {
+  const colour = c.threads[cell.band % c.threads.length];
+  const bg = lerp3(c.sea, c.edge, 0.35 + cell.k * 0.4);
+  const step = Math.floor(time * 6 + hash3(cx, cy, 3) * 9);
+  const ch = DEEP_GLYPHS[Math.floor(hash3(cx, cy, step) * DEEP_GLYPHS.length)];
+  return { bg: cell.top ? lerp3(bg, c.mid, 0.5) : bg, ch, fg: cell.top ? c.core : lerp3(colour, bg, 0.15) };
+}
+
 /**
  * Render one frame of the visual.
  * @param {{ width: number, height: number, time: number, pulse: number, energy: number,
  *           notes: { thread: number, at: number }[],
- *           theme: import("../src/themes.js").Theme }} state
+ *           theme: import("../src/themes.js").Theme,
+ *           ripples?: number[],      // ages in seconds of recent kick ripples
+ *           tide?: number[],         // 0–1 level per thread, for the glyph tide at the bottom
+ *           beatPhase?: number,      // 0–1 position inside the current beat (dots flash on the beat)
+ *           downbeat?: boolean,      // true on the first beat of the bar (a bigger flash)
+ *           layers?: { shark?: boolean, beat?: boolean } }} state
  * @returns {string} `height` lines of exactly `width` cells, joined by "\n".
  */
 export function renderVisualFrame(state) {
@@ -228,7 +281,13 @@ export function renderVisualFrame(state) {
   const depthScale = H * 0.75;
   const flickerRate = 3 + energy * 6;
   const reach = L * 0.75 + halo;
-  const bubbles = placeBubbles({ ...state, width, height, time }, size, c);
+  const showShark = state.layers?.shark !== false;
+  const showBeat = state.layers?.beat !== false;
+  const bubbles = showShark ? placeBubbles({ ...state, width, height, time }, size, c) : new Map();
+  const ripples = showBeat ? (state.ripples ?? []).filter((a) => a >= 0 && a < RIPPLE_LIFE) : [];
+  const flash = showBeat && state.beatPhase !== undefined ? (1 - clamp01(state.beatPhase)) ** 3 * (state.downbeat ? 1 : 0.55) : 0;
+  const tide = showBeat ? tideHeights(state.tide ?? [], width, height) : null;
+  const centre = { x: pose.x + L * 0.1, y: pose.y };
 
   const lines = new Array(height);
   for (let cy = 0; cy < height; cy++) {
@@ -239,14 +298,17 @@ export function renderVisualFrame(state) {
       if (dx > pose.period / 2) dx -= pose.period;
       const dy = py - pose.y;
       let d = Infinity;
-      if (Math.abs(dx) < reach && Math.abs(dy) < reach) {
+      if (showShark && Math.abs(dx) < reach && Math.abs(dy) < reach) {
         const lx = dx * pose.cos + dy * pose.sin;
         const ly = -dx * pose.sin + dy * pose.cos;
         d = sharkDistance(lx, ly, L, H, fins, wag);
       }
 
-      let bg = c.sea, ch = " ", fg = c.dot;
-      if (d < 0) {
+      let bg = flash ? lerp3(c.sea, c.edge, flash * 0.12) : c.sea, ch = " ", fg = c.dot;
+      const tideCell = tide && tide.cell(cx, cy, time);
+      if (tideCell) {
+        ({ bg, ch, fg } = tideColours(tideCell, c, cx, cy, time));
+      } else if (d < 0) {
         const k = clamp01(-d / depthScale + pulse * 0.35);
         bg = glowColour(k, c);
         ({ ch, fg } = bodyCell(cx, cy, k, bg, time, flickerRate, c));
@@ -257,7 +319,13 @@ export function renderVisualFrame(state) {
         }
         if (cx % DOT_EVERY_COL === 0 && cy % DOT_EVERY_ROW === 0) {
           ch = "·";
-          fg = d < halo ? lerp3(c.dot, c.edge, 0.5) : c.dot;
+          fg = d < halo ? lerp3(c.dot, c.edge, 0.5) : lerp3(c.dot, c.mid, flash);
+        }
+        const ring = rippleAt(ripples, cx + 0.5, py, centre, pose.period);
+        if (ring > 0) {
+          bg = lerp3(bg, c.edge, ring * 0.45);
+          ch = ring > 0.6 ? "o" : ring > 0.3 ? "·" : ch;
+          fg = lerp3(c.edge, c.mid, ring);
         }
       }
 

@@ -8,6 +8,7 @@
      ctrl+f  apply the fix for the problem on this line
      tab     accept the suggestion, or indent
      while typing, a suggestion card pops up: ↑ ↓ choose, tab/enter insert, esc close
+     ctrl+e  choose a style (rave, house, funk, chill)
      ctrl+g  next theme      ctrl+z / ctrl+y  undo / redo
      ctrl+q  save and quit
    ============================================================ */
@@ -15,6 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { compile } from "../src/lang/compile.js";
+import { STYLES } from "../src/core/styles.js";
 import { complete } from "../src/editor/complete.js";
 import { Engine } from "../src/audio/engine.js";
 import { paneTheme, FAMILIES, FAMILY_NAMES, THEMES } from "../src/themes.js";
@@ -33,7 +35,8 @@ const CARD_W = 46;
 const PLACEHOLDER = "start typing — e.g.  kick: beat fourfloor > kick      ctrl+s plays";
 // ctrl+g cycles: the two families (each pane its own tone), then single tones for every pane
 const THEME_CYCLE = [...FAMILY_NAMES, ...Object.keys(THEMES).filter((n) => !FAMILIES[n])];
-const KEYS = "ctrl+s play · ctrl+t stop · ctrl+f fix · tab suggest · ctrl+g theme · ctrl+z undo · ctrl+q quit";
+const KEYS = "ctrl+s play · ctrl+t stop · ctrl+e style · ctrl+f fix · ctrl+g theme · ctrl+z undo · ctrl+q quit";
+const NO_STYLE = "none";
 
 export async function edit(file = "song.cannoli", opts = {}) {
   const filePath = path.resolve(file);
@@ -158,7 +161,45 @@ export async function edit(file = "song.cannoli", opts = {}) {
     state.card = s ? { items: s.items.slice(0, CARD_ITEMS), from: s.from, to: s.to, selected: 0 } : null;
   }
 
+  /* The style card: pick a style and it writes (or rewrites) the `style` line. */
+  function openStyleCard() {
+    const current = state.result.program.settings.style ?? NO_STYLE;
+    const items = [...Object.entries(STYLES).map(([name, st]) => ({
+      label: name, kind: `${st.tempo} bpm`, doc: st.doc, example: `style ${name}`, insert: name,
+    })), { label: NO_STYLE, kind: "", doc: "no style: the neutral defaults", example: "", insert: NO_STYLE }];
+    state.card = { kind: "style", items, from: B.offsetOf(state.buf), to: B.offsetOf(state.buf), selected: Math.max(0, items.findIndex((i) => i.label === current)) };
+  }
+
+  function setStyle(name) {
+    const all = text();
+    const existing = all.match(/^style\b.*$/m);
+    let next;
+    if (existing) {
+      const end = existing.index + existing[0].length + (name === NO_STYLE && all[existing.index + existing[0].length] === "\n" ? 1 : 0);
+      next = B.replaceRange(state.buf, existing.index, end, name === NO_STYLE ? "" : `style ${name}`);
+    } else if (name !== NO_STYLE) {
+      const firstCode = all.match(/^(?!\s*#)\S/m)?.index ?? 0;
+      next = B.replaceRange(state.buf, firstCode, firstCode, `style ${name}\n`);
+    } else {
+      return say("no style line to remove");
+    }
+    // keep the cursor where it was, on the same text
+    change({ ...next, ...B.positionOf(next.lines, Math.min(B.offsetOf(state.buf) + (next.lines.join("\n").length - all.length), next.lines.join("\n").length)) });
+    if (engine?.playing) {
+      run();
+      say(name === NO_STYLE ? "style removed — lands on the next bar" : `style ${name}: ${STYLES[name].doc} — lands on the next bar`);
+    } else {
+      say(name === NO_STYLE ? "style removed" : `style ${name}: ${STYLES[name].doc} — ctrl+s to hear it`);
+    }
+  }
+
   function acceptCard() {
+    if (state.card.kind === "style") {
+      const pick = state.card.items[state.card.selected].insert;
+      state.card = null;
+      setStyle(pick);
+      return;
+    }
     const { items, from, to, selected } = state.card;
     change(B.replaceRange(state.buf, from, to, items[selected].insert));
     state.card = null;
@@ -179,7 +220,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
     const k = key.name;
     if (key.ctrl) {
       const actions = {
-        s: run, t: stop, f: fixLine, q: quit,
+        s: run, t: stop, f: fixLine, q: quit, e: openStyleCard,
         g: () => {
           state.themeName = THEME_CYCLE[(THEME_CYCLE.indexOf(state.themeName) + 1) % THEME_CYCLE.length];
           savePrefs({ theme: state.themeName });
