@@ -79,14 +79,17 @@ export function terminalScript([left, top, right, bottom], paneCmds) {
   ].join("\n");
 }
 
+/* The usable screen area (below the menu bar), read directly so Finder doesn't need permission. */
 function screenBounds() {
+  const jxa = 'ObjC.import("AppKit"); const f = $.NSScreen.mainScreen.visibleFrame; const full = $.NSScreen.mainScreen.frame;'
+    + ' [f.origin.x, full.size.height - f.origin.y - f.size.height, f.origin.x + f.size.width, full.size.height - f.origin.y].join(",")';
   try {
-    const out = execFileSync("osascript", ["-e", 'tell application "Finder" to get bounds of window of desktop']).toString();
-    const [l, t, r, b] = out.split(",").map((n) => Number(n.trim()));
-    return [l, Math.max(t, 25), r, b];
+    const [l, t, r, b] = execFileSync("osascript", ["-l", "JavaScript", "-e", jxa]).toString().split(",").map(Number);
+    if ([l, t, r, b].every(Number.isFinite)) return [l, t, r, b];
   } catch {
-    return [0, 25, 1440, 900];
+    // fall through to a safe default
   }
+  return [0, 25, 1440, 900];
 }
 
 /* ---------- anywhere else ---------- */

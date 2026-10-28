@@ -1,0 +1,16 @@
+# 4am Warehouse — rave
+style rave
+key f minor
+chords i VI III VII
+
+riff = 0 2 4 7
+def enter n = when bar <= n mute
+
+kick: beat fourfloor > kick
+acid: run 8 * 3 % 7 > acid > low > drift 0.2
+  > when bar > 16 (fast 2)
+hats: beat offbeat > open > gain 0.5 > enter 4
+clap: beat backbeat > clap > enter 4
+lead: riff > fast 2 > every 4 (rev > up 2)
+  > high > supersaw > ghost 0.3 > enter 8
+roll: beat rolling > hat > gain 0.3 > every 8 (fast 2) > enter 8

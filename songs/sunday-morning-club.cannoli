@@ -1,0 +1,15 @@
+# Sunday Morning Club — house
+style house
+key a minor
+chords ii V I vi
+
+hook = 4 _ 2 . 0 _ . .
+def enter n = when bar <= n mute
+
+kick: beat fourfloor > kick
+hats: beat shuffle > hat > gain 0.4 > enter 2
+bass: beat offbeat > sub > enter 2
+stabs: chord > mask (beat skip) > stab > bloom 0.3 > enter 4
+lead: hook > every 2 (up 2) > high > pluck > ghost > enter 8
+  > when bar % 16 == 0 (fast 2)
+shaker: hits 16 16 > shaker > gain 0.25 > enter 8

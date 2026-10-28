@@ -1,0 +1,14 @@
+# Rain on the Window — chill
+style chill
+key e dorian
+chords ii V I IV
+
+theme = 0 2 4 6 4 2
+
+keys: chord > slow 2 > pad > bloom > tape 0.4
+melody: theme > rot bar % 3 > slow 2 > high > bell > ghost 0.5
+  > maybe 0.4 rev
+bass: 0 _ . 4 > sub
+kick: beat boombap > kick
+snare: beat backbeat > snare > gain 0.6
+hats: hits 6 8 > hat > gain 0.3 > sometimes (chop 2)

@@ -1,0 +1,15 @@
+# Baile no Morro — Brazilian funk
+style funk
+key c minor
+chords i i iv iv
+
+def enter n = when bar <= n mute
+
+kick: beat tamborzao > kick
+boom: 0 . . 0 . . 0 . . . 3 . . 0 . . > boom
+  > every 4 (up 2)
+bell: beat batida > cowbell > gain 0.4 > enter 2
+snare: beat backbeat > snare > every 2 (chop 2) > enter 2
+stab: chord > mask (beat tresillo) > stab > high > gain 0.5 > enter 4
+vox: 4 . 4 2 . 0 . . > square > high > short > enter 8
+  > maybe 0.5 rev
