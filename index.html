@@ -33,7 +33,7 @@
       <span class="visually-hidden">Load an example</span>
       <select id="examples" aria-label="Load an example"></select>
     </label>
-    <a class="btn" href="sheet.html" target="_blank" rel="noopener" title="every verb, groove and style, with songs">sheet ↗</a>
+    <button class="btn" id="referenceBtn" type="button" title="the cheat sheet, next to the editor">reference</button>
     <button class="btn btn-play" id="playBtn" type="button" title="Ctrl+Enter"><span>play</span> <kbd data-mod>ctrl</kbd><kbd>↵</kbd></button>
     <button class="btn" id="stopBtn" type="button" title="Ctrl+. (shift: stop now)">stop <kbd data-mod>ctrl</kbd><kbd>.</kbd></button>
   </div>
@@ -45,7 +45,20 @@
     <p class="message" id="message" role="status"></p>
   </section>
 
-  <aside class="side">
+  <div class="divider" id="divider" role="separator" aria-orientation="vertical" aria-label="Resize the side panel" tabindex="0"></div>
+
+  <aside class="side" id="side">
+    <div class="side-tabs" role="tablist" aria-label="Side panel">
+      <button type="button" role="tab" data-side-tab="live" aria-selected="true">live</button>
+      <button type="button" role="tab" data-side-tab="reference" aria-selected="false">reference</button>
+      <a class="side-out" id="referenceOut" href="sheet.html" target="_blank" rel="noopener" hidden>open in its own tab ↗</a>
+    </div>
+
+    <div class="side-pane" data-side-pane="reference" role="tabpanel" hidden>
+      <iframe id="referenceFrame" title="cannoli reference" loading="lazy"></iframe>
+    </div>
+
+    <div class="side-pane" data-side-pane="live" role="tabpanel">
     <section class="panel">
       <h2>threads</h2>
       <canvas id="threads" aria-label="What each thread plays in the current bar"></canvas>
@@ -76,8 +89,9 @@
         <li><kbd data-mod>ctrl</kbd>+<kbd>space</kbd> suggestions · <kbd>tab</kbd> insert</li>
         <li>hover an underline to see what's wrong</li>
       </ul>
-      <p class="dim">Everything else is on the <a href="sheet.html" target="_blank" rel="noopener">cheat sheet ↗</a>.</p>
+      <p class="dim">Everything else is in the <button type="button" class="link-btn" data-side-tab="reference">reference</button> tab.</p>
     </section>
+    </div>
   </aside>
 </main>
 

@@ -261,6 +261,7 @@ $("theme").innerHTML = THEME_NAMES.map((n) => `<option value="${n}">${THEMES[n].
 $("theme").value = savedTheme();
 $("theme").addEventListener("change", (e) => {
   applyTheme(e.target.value);
+  $("referenceFrame").contentWindow?.postMessage({ type: "cannoli:theme", name: e.target.value }, location.origin);
   say(`theme: ${THEMES[e.target.value].label}`);
 });
 
@@ -294,6 +295,71 @@ function savePrefs(change) {
   Object.assign(prefs, change);
   writeStore(STORE_PREFS, JSON.stringify(prefs));
 }
+
+/* ---------- side panel: live / reference, and the divider ---------- */
+
+const SIDE_DEFAULT_W = { live: "min(380px, 38vw)", reference: "46vw" };
+const DIVIDER_STEP_PX = 24;
+
+function openSideTab(name) {
+  document.querySelectorAll("[role=tab][data-side-tab]").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.sideTab === name)));
+  document.querySelectorAll("[data-side-pane]").forEach((p) => { p.hidden = p.dataset.sidePane !== name; });
+  $("referenceOut").hidden = name !== "reference";
+  $("referenceBtn").classList.toggle("is-on", name === "reference");
+  if (name === "reference" && !$("referenceFrame").src) $("referenceFrame").src = "sheet.html?embed";
+  setSideWidth(prefs.sideWidth?.[name] ?? SIDE_DEFAULT_W[name]);
+  savePrefs({ sideTab: name });
+}
+
+function currentSideTab() {
+  return document.querySelector("[role=tab][aria-selected=true]")?.dataset.sideTab ?? "live";
+}
+
+function setSideWidth(width) {
+  $("side").style.setProperty("--side-w", width);
+}
+
+document.querySelectorAll("[data-side-tab]").forEach((el) => el.addEventListener("click", () => openSideTab(el.dataset.sideTab)));
+$("referenceBtn").addEventListener("click", () => openSideTab(currentSideTab() === "reference" ? "live" : "reference"));
+
+/* drag (or arrow keys on) the divider; each tab remembers its own width */
+function rememberWidth(px) {
+  const width = `${Math.round(px)}px`;
+  setSideWidth(width);
+  savePrefs({ sideWidth: { ...prefs.sideWidth, [currentSideTab()]: width } });
+}
+$("divider").addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  const divider = $("divider");
+  divider.setPointerCapture(e.pointerId);
+  divider.classList.add("dragging");
+  document.body.classList.add("resizing");
+  const move = (ev) => setSideWidth(`${Math.max(260, window.innerWidth - ev.clientX)}px`);
+  const up = (ev) => {
+    divider.removeEventListener("pointermove", move);
+    divider.classList.remove("dragging");
+    document.body.classList.remove("resizing");
+    rememberWidth(Math.max(260, window.innerWidth - ev.clientX));
+  };
+  divider.addEventListener("pointermove", move);
+  divider.addEventListener("pointerup", up, { once: true });
+});
+$("divider").addEventListener("keydown", (e) => {
+  const step = { ArrowLeft: DIVIDER_STEP_PX, ArrowRight: -DIVIDER_STEP_PX }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  rememberWidth(Math.max(260, $("side").getBoundingClientRect().width + step));
+});
+
+/* the embedded reference asks to load a song into the editor */
+window.addEventListener("message", (e) => {
+  if (e.origin !== location.origin || e.data?.type !== "cannoli:load" || typeof e.data.code !== "string") return;
+  editor.setValue(e.data.code);
+  lint();
+  say(`loaded "${e.data.name ?? "song"}" — ctrl+enter to hear it (ctrl+z brings back what you had)`);
+});
+
+openSideTab(prefs.sideTab === "reference" ? "reference" : "live");
 
 /* ---------- helpers ---------- */
 

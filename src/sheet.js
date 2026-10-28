@@ -15,6 +15,15 @@ import { applyTheme, savedTheme } from "./apply-theme.js";
 
 applyTheme(savedTheme());
 
+// inside the app's side panel: compact, follows the app's theme, and songs load into the editor beside it
+const embedded = new URLSearchParams(location.search).has("embed") && window.parent !== window;
+if (embedded) {
+  document.body.classList.add("embedded");
+  window.addEventListener("message", (e) => {
+    if (e.origin === location.origin && e.data?.type === "cannoli:theme") applyTheme(e.data.name);
+  });
+}
+
 const GROUP_TITLES = {
   order: "order — rearrange the notes",
   time: "time — faster, slower, denser",
@@ -161,7 +170,7 @@ function songs() {
     <article class="sh-song">
       <header>
         <h3>${esc(ex.name)}</h3>
-        <a class="btn btn-play" href="${codeLink(ex.code)}" target="_blank" rel="noopener">open in cannoli ↗</a>
+        <a class="btn btn-play" href="${codeLink(ex.code)}" target="_blank" rel="noopener" data-song="${EXAMPLES.indexOf(ex)}">${embedded ? "load into the editor" : "open in cannoli ↗"}</a>
       </header>
       <p class="sh-intro">${esc(ex.note)}</p>
       <div class="sh-song-body">
@@ -185,3 +194,13 @@ document.getElementById("sheet").innerHTML = [
 ].join("");
 
 document.getElementById("printBtn").addEventListener("click", () => window.print());
+
+if (embedded) {
+  document.getElementById("sheet").addEventListener("click", (e) => {
+    const link = e.target.closest("[data-song]");
+    if (!link) return;
+    e.preventDefault();
+    const ex = EXAMPLES[Number(link.dataset.song)];
+    window.parent.postMessage({ type: "cannoli:load", code: ex.code, name: ex.name }, location.origin);
+  });
+}
