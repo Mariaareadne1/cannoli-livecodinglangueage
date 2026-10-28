@@ -214,7 +214,12 @@ export async function edit(file = "song.cannoli", opts = {}) {
     else if (k === "delete") change(B.deleteForward(state.buf));
     else if (k === "tab") {
       if (!acceptSuggestion()) change(B.insert(state.buf, "  "));
-    } else if (str && !key.ctrl && [...str].every((c) => c >= " ")) change(B.insert(state.buf, str));
+    } else if (str && !key.ctrl && [...str].every((c) => c >= " ")) {
+      change(B.insert(state.buf, str));
+      // typing "name:" on an indented line starts a new thread, so it moves back to the left edge
+      const line = state.buf.lines[state.buf.row];
+      if (str === ":" && /^\s+[A-Za-z]\w*:$/.test(line)) change(B.replaceRange(state.buf, B.offsetOf(state.buf) - line.length, B.offsetOf(state.buf), line.trimStart()));
+    }
     if (typing) refreshCard();
     else state.card = null;
   }
@@ -245,7 +250,11 @@ export async function edit(file = "song.cannoli", opts = {}) {
     for (let i = 0; i < codeHeight(); i++) {
       const r = scroll.row + i;
       if (r >= lines.length) {
-        out.push(`${bg(th.bg)}${fg(th.faint)}${fit("", width)}${RESET}`);
+        const cardRow = card?.rows[i - card.top];
+        const empty = (w) => `${bg(th.bg)}${fit("", Math.max(0, w))}${RESET}`;
+        out.push(cardRow
+          ? empty(GUTTER + card.left) + cardRow + empty(width - GUTTER - card.left - card.width)
+          : empty(width));
         continue;
       }
       const lineProblems = probs.filter((p) => p.row === r);

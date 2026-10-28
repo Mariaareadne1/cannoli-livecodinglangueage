@@ -5,8 +5,8 @@
    a frame loop, and a clean exit.
    ============================================================ */
 
-import readline from "node:readline";
 import { rgb } from "../src/themes.js";
+import { parseKeys } from "./keys.js";
 
 const CSI = "\x1b[";
 
@@ -74,13 +74,13 @@ export function runPane({ fps = 15, render, onKey, onExit }) {
   };
 
   out.write(`${CSI}?1049h${CSI}2J`);
-  if (process.stdin.isTTY) {
-    readline.emitKeypressEvents(process.stdin);
-    process.stdin.setRawMode(true);
-  }
-  process.stdin.on("keypress", (str, key = {}) => {
-    if (key.ctrl && key.name === "c") return exit(0);
-    onKey?.(str, key);
+  if (process.stdin.isTTY) process.stdin.setRawMode(true);
+  process.stdin.setEncoding("utf8");
+  process.stdin.on("data", (chunk) => {
+    for (const key of parseKeys(chunk)) {
+      if (key.ctrl && key.name === "c") return exit(0);
+      onKey?.(key.str, key);
+    }
     draw();
   });
   out.on("resize", () => {
