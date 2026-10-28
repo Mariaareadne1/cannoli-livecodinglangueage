@@ -191,6 +191,50 @@ bass range on their own.
 | `pump` | ducks on every beat, breathing with the kick |
 | `air` | a soft noise layer on each note |
 
+## Performing from the terminal
+
+```
+npm install
+node cli/cannoli.js stage song.cannoli
+```
+
+`stage` turns your terminal into the editor and opens the other panes beside
+it (with tmux if it's installed, otherwise as Terminal windows on a Mac). Each
+pane can also be started on its own, in any order — they find the editor by
+themselves:
+
+| Pane | Command | What it is |
+|---|---|---|
+| editor | `node cli/cannoli.js edit song.cannoli` | an empty page with a title bar; it plays the music |
+| guide | `node cli/cannoli.js guide` | explains the line you're on, shows problems and fixes as you type, suggests what's next; **tab** switches to the full reference |
+| visual | `node cli/cannoli.js visual` | an ASCII shark drifting through a dotted sea; it swells on the kick and lets off a bubble per note |
+| threads | `node cli/cannoli.js threads` | the beat grid (add `--threads` to `stage`) |
+
+Editor keys:
+
+| Key | |
+|---|---|
+| `ctrl+s` | play, or apply changes on the next bar (also saves) |
+| `ctrl+t` | stop at the end of the bar (twice: now) |
+| `tab` | accept the suggestion card that pops up as you type (`↑ ↓` choose, `esc` closes) |
+| `ctrl+f` | apply the fix for the problem on this line |
+| `ctrl+g` | next theme |
+| `ctrl+z` / `ctrl+y` | undo / redo |
+| `ctrl+q` | save and quit |
+
+Run `npm link` once to use plain `cannoli stage …` from anywhere.
+
+## Themes
+
+Three themes, shared by the web app (theme menu in the header) and every
+terminal pane (`ctrl+g` in the editor, or `--theme=` on any pane):
+
+| Theme | Colours |
+|---|---|
+| `deep` | dark navy, white, light blue, gray |
+| `rose` | black, light pink, dark pink, white |
+| `bubblegum` | light pink background, dark pink and black |
+
 ## Development
 
 ```

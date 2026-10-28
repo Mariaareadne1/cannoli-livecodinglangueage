@@ -26,8 +26,12 @@ export async function stage(file = "song.cannoli", flags = {}) {
   const panes = ["guide", "visual", ...(flags.threads ? ["threads"] : [])];
   const editorCmd = `${cmd("edit")} ${shellQuote(path.resolve(file))}`;
 
+  if (flags.dry) {
+    process.stdout.write(`${terminalScript(screenBounds(), panes.map(cmd))}\n\nthen this window runs:\n  ${editorCmd}\n`);
+    return;
+  }
   if (has("tmux")) return tmuxStage(editorCmd, panes.map(cmd));
-  if (process.platform === "darwin") return terminalStage(file, panes.map(cmd));
+  if (process.platform === "darwin") return terminalStage(file, panes.map(cmd), flags);
   printInstructions(editorCmd, panes.map(cmd));
 }
 
@@ -45,11 +49,23 @@ function tmuxStage(editorCmd, paneCmds) {
 
 /* ---------- macOS Terminal windows ---------- */
 
-async function terminalStage(file, paneCmds) {
-  const [left, top, right, bottom] = screenBounds();
+async function terminalStage(file, paneCmds, flags) {
+  try {
+    execFileSync("osascript", ["-e", terminalScript(screenBounds(), paneCmds)], { stdio: "ignore" });
+  } catch {
+    printInstructions(`cannoli edit ${file}`, paneCmds);
+    return;
+  }
+  // this window becomes the editor
+  const { edit } = await import("./edit.js");
+  await edit(file, flags);
+}
+
+/** AppleScript that puts this window on the left and opens one window per pane, stacked on the right. */
+export function terminalScript([left, top, right, bottom], paneCmds) {
   const split = Math.round(left + (right - left) * EDITOR_SHARE);
   const rowH = Math.round((bottom - top) / paneCmds.length);
-  const script = [
+  return [
     'tell application "Terminal"',
     "  set editorWindow to front window",
     `  set bounds of editorWindow to {${left}, ${top}, ${split}, ${bottom}}`,
@@ -61,15 +77,6 @@ async function terminalStage(file, paneCmds) {
     "  activate",
     "end tell",
   ].join("\n");
-  try {
-    execFileSync("osascript", ["-e", script], { stdio: "ignore" });
-  } catch {
-    printInstructions(`cannoli edit ${file}`, paneCmds);
-    return;
-  }
-  // this window becomes the editor
-  const { edit } = await import("./edit.js");
-  await edit(file, {});
 }
 
 function screenBounds() {
