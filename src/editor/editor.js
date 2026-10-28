@@ -1,7 +1,8 @@
 /* ============================================================
    cannoli — editor
    A textarea over a coloured <pre>. Adds:
-     · a suggestion card while typing (Tab / Enter to accept)
+     · a suggestion card while typing (Tab / Enter to accept,
+       Shift+Tab to write out the whole line it shows)
      · hover on an underlined problem → what's wrong + a Fix button
      · one-click fixes that stay on the undo stack
    ============================================================ */
@@ -105,8 +106,10 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
       <div class="ed-card-doc">
         <code>${esc(current.detail)}</code>
         <p>${esc(current.doc)}</p>
-        ${current.example ? `<p class="ed-card-ex">e.g. <code>${esc(current.example)}</code></p>` : ""}
-        <p class="ed-card-keys">Tab to insert · Esc to close</p>
+        ${current.fill
+          ? `<p class="ed-card-fill">whole line <code>${esc(current.preview)}</code></p>`
+          : current.example ? `<p class="ed-card-ex">e.g. <code>${esc(current.example)}</code></p>` : ""}
+        <p class="ed-card-keys">${current.fill ? "Tab inserts the word · Shift+Tab writes the whole line" : "Tab to insert"} · Esc to close</p>
       </div>`;
     const pos = coordsOf(from);
     card.style.left = `${Math.max(8, pos.x - 4)}px`;
@@ -125,6 +128,15 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
     replaceRange(from, to, items[i].insert);
     closeCard();
     if (items[i].insert.endsWith(" ")) suggest();
+  }
+
+  /* Write out the whole line the card shows, replacing the rest of the line. */
+  function acceptFill() {
+    const { from, lineEnd, items } = state.suggestions;
+    const pick = items[state.selected];
+    if (!pick.fill) return accept();
+    replaceRange(from, lineEnd, pick.fill);
+    closeCard();
   }
 
   card.addEventListener("mousedown", (e) => {
@@ -198,6 +210,11 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
         const n = state.suggestions.items.length;
         state.selected = (state.selected + (e.key === "ArrowDown" ? 1 : n - 1)) % n;
         drawCard();
+        return;
+      }
+      if (e.key === "Tab" && e.shiftKey) {
+        e.preventDefault();
+        acceptFill();
         return;
       }
       if (e.key === "Tab" || e.key === "Enter") {

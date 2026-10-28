@@ -300,6 +300,8 @@ body.resizing iframe { pointer-events: none; }
 .ed-card-doc code { color: var(--soft); }
 .ed-card-doc p { margin: 6px 0 0; }
 .ed-card-ex code { color: var(--ink); }
+.ed-card-fill { color: var(--ink-faint); font-size: 11px; }
+.ed-card-fill code { display: block; margin-top: 3px; padding: 4px 6px; border-radius: 4px; background: var(--bg-3); color: var(--ink); font-size: 12px; white-space: pre-wrap; }
 .ed-card-keys { color: var(--ink-faint); font-size: 11px; }
 
 /* problem tooltip */

@@ -7,7 +7,8 @@
      ctrl+t  stop at the end of the bar (twice: stop now)
      ctrl+f  apply the fix for the problem on this line
      tab     accept the suggestion, or indent
-     while typing, a suggestion card pops up: ↑ ↓ choose, tab/enter insert, esc close
+     while typing, a suggestion card pops up: ↑ ↓ choose, tab/enter insert, esc close,
+     shift+tab writes out the whole line the card shows
      ctrl+e  choose a style (rave, house, funk, chill)
      ctrl+g  next theme      ctrl+z / ctrl+y  undo / redo
      ctrl+q  save and quit
@@ -158,7 +159,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
   /* The card follows typing: open it when there's something to suggest. */
   function refreshCard() {
     const s = suggestion();
-    state.card = s ? { items: s.items.slice(0, CARD_ITEMS), from: s.from, to: s.to, selected: 0 } : null;
+    state.card = s ? { items: s.items.slice(0, CARD_ITEMS), from: s.from, to: s.to, lineEnd: s.lineEnd, selected: 0 } : null;
   }
 
   /* The style card: pick a style and it writes (or rewrites) the `style` line. */
@@ -193,15 +194,21 @@ export async function edit(file = "song.cannoli", opts = {}) {
     }
   }
 
-  function acceptCard() {
+  function acceptCard({ whole = false } = {}) {
     if (state.card.kind === "style") {
       const pick = state.card.items[state.card.selected].insert;
       state.card = null;
       setStyle(pick);
       return;
     }
-    const { items, from, to, selected } = state.card;
-    change(B.replaceRange(state.buf, from, to, items[selected].insert));
+    const { items, from, to, lineEnd, selected } = state.card;
+    const pick = items[selected];
+    if (whole && pick.fill) {
+      change(B.replaceRange(state.buf, from, lineEnd, pick.fill));
+      state.card = null;
+      return;
+    }
+    change(B.replaceRange(state.buf, from, to, pick.insert));
     state.card = null;
     if (items[selected].insert.endsWith(" ")) refreshCard();
   }
@@ -239,6 +246,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
         state.card = { ...state.card, selected: (state.card.selected + (k === "down" ? 1 : n - 1)) % n };
         return;
       }
+      if (k === "shift-tab") return acceptCard({ whole: true });
       if (k === "tab" || k === "return" || k === "enter") return acceptCard();
       if (k === "escape") {
         state.card = null;
@@ -334,19 +342,35 @@ export async function edit(file = "song.cannoli", opts = {}) {
     const pick = items[selected];
     const body = [
       ...items.map((it, i) => {
-        const line = ` ${i === selected ? "▸" : " "} ${it.label.padEnd(14)} ${it.kind}`;
+        // a whole line to fill in needs the room; everything else shows its kind beside it
+        const line = ` ${i === selected ? "▸" : " "} ${it.kind === "fill in" ? it.label : `${it.label.padEnd(14)} ${it.kind}`}`;
         return i === selected
           ? `${bg(th.raised)}${fg(th.ink)}${BOLD}${fit(line, w)}${RESET}`
           : `${bg(th.panel)}${fg(th.soft)}${fit(line, w)}${RESET}`;
       }),
       `${bg(th.panel)}${fg(th.line)}${"─".repeat(w)}${RESET}`,
       `${bg(th.panel)}${fg(th.dim)}${fit(` ${pick.doc}`, w)}${RESET}`,
-      ...(pick.example ? [`${bg(th.panel)}${fg(th.faint)}${fit(` e.g. ${pick.example}`, w)}${RESET}`] : []),
-      `${bg(th.panel)}${fg(th.faint)}${fit(" ↑↓ choose · tab insert · esc close", w)}${RESET}`,
+      ...(pick.fill
+        ? [`${bg(th.panel)}${fg(th.faint)}${fit(" whole line", w)}${RESET}`,
+          ...wrap(pick.preview, w - 2).map((part) => `${bg(th.panel)} ${bg(th.raised)}${fg(th.accent)}${fit(part, w - 2)}${bg(th.panel)} ${RESET}`)]
+        : pick.example ? [`${bg(th.panel)}${fg(th.faint)}${fit(` e.g. ${pick.example}`, w)}${RESET}`] : []),
+      `${bg(th.panel)}${fg(th.faint)}${fit(pick.fill ? " tab word · shift+tab whole line · esc" : " ↑↓ choose · tab insert · esc close", w)}${RESET}`,
     ];
     // below the cursor if it fits, otherwise above
     const top = below + body.length <= codeHeight() ? below : Math.max(0, below - 1 - body.length);
     return { rows: body, top, left, width: w };
+  }
+
+  /* Cut text into pieces of at most n characters, breaking at spaces where it can. */
+  function wrap(text, n) {
+    const parts = [];
+    let rest = text;
+    while (rest.length > n) {
+      const cut = rest.lastIndexOf(" ", n) > 0 ? rest.lastIndexOf(" ", n) : n;
+      parts.push(rest.slice(0, cut));
+      rest = rest.slice(cut).trimStart();
+    }
+    return [...parts, rest];
   }
 
   function titleBar(th, width) {

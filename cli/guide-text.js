@@ -94,7 +94,7 @@ export function reference() {
   const head = (t) => out.push({ text: "", role: "dim" }, { text: t, role: "head" });
   head("keys (editor)");
   [["ctrl+s", "play, or apply changes on the next bar"], ["ctrl+t", "stop at the end of the bar (twice: now)"],
-    ["ctrl+f", "apply the fix on this line"], ["tab", "accept the suggestion"], ["ctrl+g", "next theme"], ["ctrl+q", "save and quit"]]
+    ["ctrl+f", "apply the fix on this line"], ["tab", "accept the suggestion"], ["shift+tab", "write out the whole line it shows"], ["ctrl+g", "next theme"], ["ctrl+q", "save and quit"]]
     .forEach(([k, d]) => out.push({ text: `${k.padEnd(10)} ${d}`, role: "soft" }));
   head("a line");
   out.push(
