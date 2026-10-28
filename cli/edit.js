@@ -17,7 +17,7 @@ import path from "node:path";
 import { compile } from "../src/lang/compile.js";
 import { complete } from "../src/editor/complete.js";
 import { Engine } from "../src/audio/engine.js";
-import { theme as themeFor, THEME_NAMES } from "../src/themes.js";
+import { paneTheme, FAMILIES, FAMILY_NAMES, THEMES } from "../src/themes.js";
 import * as B from "./buffer.js";
 import { runPane, fg, bg, RESET, BOLD, ITALIC, fit } from "./ansi.js";
 import { codeLine } from "./code-ansi.js";
@@ -31,6 +31,8 @@ const UNDO_LIMIT = 200;
 const CARD_ITEMS = 7;
 const CARD_W = 46;
 const PLACEHOLDER = "start typing — e.g.  kick: beat fourfloor > kick      ctrl+s plays";
+// ctrl+g cycles: the two families (each pane its own tone), then single tones for every pane
+const THEME_CYCLE = [...FAMILY_NAMES, ...Object.keys(THEMES).filter((n) => !FAMILIES[n])];
 const KEYS = "ctrl+s play · ctrl+t stop · ctrl+f fix · tab suggest · ctrl+g theme · ctrl+z undo · ctrl+q quit";
 
 export async function edit(file = "song.cannoli", opts = {}) {
@@ -179,9 +181,9 @@ export async function edit(file = "song.cannoli", opts = {}) {
       const actions = {
         s: run, t: stop, f: fixLine, q: quit,
         g: () => {
-          state.themeName = THEME_NAMES[(THEME_NAMES.indexOf(state.themeName) + 1) % THEME_NAMES.length];
+          state.themeName = THEME_CYCLE[(THEME_CYCLE.indexOf(state.themeName) + 1) % THEME_CYCLE.length];
           savePrefs({ theme: state.themeName });
-          say(`theme: ${themeFor(state.themeName).label}`);
+          say(`theme: ${FAMILIES[state.themeName]?.label ?? `${THEMES[state.themeName].label} (every pane)`}`);
         },
         z: () => { if (state.undo.length) [state.redo, state.buf, state.undo] = [[...state.redo, state.buf], state.undo.at(-1), state.undo.slice(0, -1)]; state.result = compile(text()); },
         y: () => { if (state.redo.length) [state.undo, state.buf, state.redo] = [[...state.undo, state.buf], state.redo.at(-1), state.redo.slice(0, -1)]; state.result = compile(text()); },
@@ -231,7 +233,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
 
   function render({ width, height: h }) {
     height = h;
-    const th = themeFor(state.themeName);
+    const th = paneTheme(state.themeName, "edit");
     const all = text();
     const lines = state.buf.lines;
     const probs = problems();
@@ -275,6 +277,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
     return {
       frame: out.join("\r\n"),
       cursor: { row: 3 + buf.row - scroll.row, col: GUTTER + 1 + buf.col - scroll.col },
+      theme: th,
     };
   }
 

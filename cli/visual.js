@@ -8,7 +8,7 @@
 import { renderVisualFrame } from "./visual-frame.js";
 import { runPane } from "./ansi.js";
 import { connect } from "./link.js";
-import { theme as themeFor } from "../src/themes.js";
+import { paneTheme } from "../src/themes.js";
 import { loadPrefs } from "./prefs.js";
 
 const PULSE_DECAY_PER_S = 3.5;
@@ -38,6 +38,7 @@ export function visual(flags = {}) {
       state.notes = state.notes.filter((n) => (now - n.born) / 1000 <= NOTE_LIFE_S);
       const recent = state.notes.filter((n) => now - n.born < 1000).length;
       state.energy += (Math.min(1, recent / BUSY_NOTES_PER_S) - state.energy) * Math.min(1, dt * 2);
+      const th = paneTheme(state.themeName, "visual");
       const frame = renderVisualFrame({
         width,
         height,
@@ -45,9 +46,9 @@ export function visual(flags = {}) {
         pulse: state.pulse,
         energy: state.energy,
         notes: state.notes.map((n) => ({ thread: n.thread, at: (now - n.born) / 1000 })),
-        theme: themeFor(state.themeName),
+        theme: th,
       });
-      return { frame: frame.split("\n").join("\r\n"), cursor: null };
+      return { frame: frame.split("\n").join("\r\n"), cursor: null, theme: th };
     },
     onKey: (str) => {
       if (str === "q") process.kill(process.pid, "SIGTERM");

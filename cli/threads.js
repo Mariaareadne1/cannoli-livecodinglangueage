@@ -6,7 +6,7 @@
 
 import { runPane, fg, bg, RESET, BOLD, fit } from "./ansi.js";
 import { connect } from "./link.js";
-import { theme as themeFor } from "../src/themes.js";
+import { paneTheme } from "../src/themes.js";
 import { loadPrefs } from "./prefs.js";
 
 const NAME_W = 10;
@@ -19,7 +19,7 @@ export function threads(flags = {}) {
   runPane({
     fps: 20,
     render: ({ width, height }) => {
-      const th = themeFor(flags.theme ?? msg?.theme ?? loadPrefs().theme);
+      const th = paneTheme(flags.theme ?? msg?.theme ?? loadPrefs().theme ?? "deep", "threads");
       const blank = `${bg(th.bg)}${fit("", width)}${RESET}`;
       const title = msg?.bar
         ? `bar ${msg.bar}  ·  chord ${msg.chord ?? "—"}  ·  ${msg.key ?? ""}`
@@ -50,7 +50,7 @@ export function threads(flags = {}) {
         lines.push(`${row} ${RESET}`, blank);
       });
       while (lines.length < height) lines.push(blank);
-      return { frame: lines.slice(0, height).join("\r\n"), cursor: null };
+      return { frame: lines.slice(0, height).join("\r\n"), cursor: null, theme: th };
     },
     onKey: (str) => {
       if (str === "q") process.kill(process.pid, "SIGTERM");

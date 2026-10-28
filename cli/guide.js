@@ -8,18 +8,19 @@
 import { runPane, fg, bg, RESET, BOLD, fit } from "./ansi.js";
 import { connect } from "./link.js";
 import { assistant, reference, wrap } from "./guide-text.js";
-import { theme as themeFor } from "../src/themes.js";
+import { paneTheme } from "../src/themes.js";
 import { loadPrefs } from "./prefs.js";
 
 export function guide(flags = {}) {
-  const state = { msg: null, connected: false, mode: "assistant", scroll: 0 };
+  const pane = flags.reference ? "reference" : "guide";
+  const state = { msg: null, connected: false, mode: flags.reference ? "reference" : "assistant", scroll: 0 };
   connect((m) => { state.msg = m; }, (c) => { state.connected = c; });
   const ref = reference();
 
   runPane({
     fps: 10,
     render: ({ width, height }) => {
-      const th = themeFor(flags.theme ?? state.msg?.theme ?? loadPrefs().theme);
+      const th = paneTheme(flags.theme ?? state.msg?.theme ?? loadPrefs().theme ?? "deep", pane);
       const tabs = state.mode === "assistant" ? "[assistant]  reference" : " assistant  [reference]";
       const title = `${bg(th.panel)}${fg(th.ink)}${BOLD} cannoli${fg(th.accent)}~${RESET}${bg(th.panel)}${fg(th.dim)}${fit(` guide   ${tabs}   tab switches`, width - 9)}${RESET}`;
       const rule = `${bg(th.bg)}${fg(th.line)}${"─".repeat(width)}${RESET}`;
@@ -40,7 +41,7 @@ export function guide(flags = {}) {
         return `${bg(th.bg)}${fg(color)}${style}${fit(`  ${role === "head" ? text.toUpperCase() : text}`, width)}${RESET}`;
       });
       while (rows.length < body) rows.push(`${bg(th.bg)}${fit("", width)}${RESET}`);
-      return { frame: [title, rule, ...rows].join("\r\n"), cursor: null };
+      return { frame: [title, rule, ...rows].join("\r\n"), cursor: null, theme: th };
     },
     onKey: (str, key) => {
       if (str === "q") return process.kill(process.pid, "SIGTERM");

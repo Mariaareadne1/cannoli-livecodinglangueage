@@ -7,6 +7,7 @@
 
 import { rgb } from "../src/themes.js";
 import { parseKeys } from "./keys.js";
+import { windowPainter } from "./window-color.js";
 
 const CSI = "\x1b[";
 
@@ -45,18 +46,21 @@ export function row(text, width, { color, background, style = "" }) {
 
 /**
  * Take over the terminal for a full-screen pane.
- * @param {{ fps?: number, render: (size: { width: number, height: number }) => { frame: string, cursor?: { row: number, col: number } | null },
+ * @param {{ fps?: number, render: (size: { width: number, height: number }) =>
+ *             { frame: string, cursor?: { row: number, col: number } | null, theme?: import("../src/themes.js").Theme },
  *           onKey?: (str: string, key: object) => void, onExit?: () => void }} opts
  */
 export function runPane({ fps = 15, render, onKey, onExit }) {
   const out = process.stdout;
   let last = "";
   let timer = null;
+  const painter = windowPainter();
 
   const draw = () => {
     const width = out.columns || 80;
     const height = out.rows || 24;
-    const { frame, cursor } = render({ width, height });
+    const { frame, cursor, theme } = render({ width, height });
+    if (theme) painter.paint(theme);   // the window's own background, so no margins show
     const cursorCode = cursor ? `${moveTo(cursor.row, cursor.col)}${CSI}?25h` : `${CSI}?25l`;
     const next = `${CSI}?25l${moveTo(1, 1)}${frame}${cursorCode}`;
     if (next !== last) {
@@ -67,6 +71,7 @@ export function runPane({ fps = 15, render, onKey, onExit }) {
 
   const exit = (code = 0) => {
     clearInterval(timer);
+    painter.restore();
     out.write(`${RESET}${CSI}?25h${CSI}?1049l`);
     if (process.stdin.isTTY) process.stdin.setRawMode(false);
     onExit?.();
@@ -89,6 +94,7 @@ export function runPane({ fps = 15, render, onKey, onExit }) {
     draw();
   });
   process.on("SIGTERM", () => exit(0));
+  process.on("SIGHUP", () => exit(0));
   timer = setInterval(draw, Math.round(1000 / fps));
   draw();
   return { exit, redraw: draw };

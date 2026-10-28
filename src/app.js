@@ -257,7 +257,7 @@ $("examples").addEventListener("change", (e) => {
 });
 
 /* theme */
-$("theme").innerHTML = THEME_NAMES.map((n) => `<option value="${n}">${n}</option>`).join("");
+$("theme").innerHTML = THEME_NAMES.map((n) => `<option value="${n}">${THEMES[n].label}</option>`).join("");
 $("theme").value = savedTheme();
 $("theme").addEventListener("change", (e) => {
   applyTheme(e.target.value);
