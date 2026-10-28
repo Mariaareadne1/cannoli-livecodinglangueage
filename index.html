@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>loom</title>
+  <meta name="description" content="loom — a live-coding language where every thread shares one key and every change lands on the downbeat." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="top">
+  <h1 class="mark">loom<span class="mark-tilde">~</span></h1>
+  <div class="status" aria-live="polite">
+    <span class="st"><span class="st-k">key</span> <span id="stKey">—</span></span>
+    <span class="st"><span class="st-k">chord</span> <span id="stChord">—</span></span>
+    <span class="st"><span class="st-k">bar</span> <span id="stBar">—</span></span>
+    <span class="st st-next" id="stNext"></span>
+  </div>
+  <div class="actions">
+    <label class="sel-wrap">
+      <span class="visually-hidden">Load an example</span>
+      <select id="examples" aria-label="Load an example"></select>
+    </label>
+    <button class="btn btn-play" id="playBtn" type="button" title="Ctrl+Enter"><span>play</span> <kbd data-mod>ctrl</kbd><kbd>↵</kbd></button>
+    <button class="btn" id="stopBtn" type="button" title="Ctrl+. (shift: stop now)">stop <kbd data-mod>ctrl</kbd><kbd>.</kbd></button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="code" aria-label="Code">
+    <div id="editor"></div>
+    <p class="message" id="message" role="status"></p>
+  </section>
+
+  <aside class="side">
+    <section class="panel">
+      <h2>threads</h2>
+      <canvas id="threads" aria-label="What each thread plays in the current bar"></canvas>
+    </section>
+
+    <section class="panel" id="problems">
+      <h2>problems <span class="count" id="problemCount"></span>
+        <button type="button" class="link-btn" id="fixAll" hidden>fix all</button></h2>
+      <ul class="problem-list" id="problemList"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>settings</h2>
+      <label class="setting">changes land on
+        <select id="quantize">
+          <option value="bar">the next bar</option>
+          <option value="phrase">the next 4-bar phrase</option>
+        </select>
+      </label>
+      <label class="setting setting-check"><input type="checkbox" id="autofix" /> fix typos automatically when I press play</label>
+    </section>
+
+    <section class="panel panel-help">
+      <h2>keys</h2>
+      <ul class="keys">
+        <li><kbd data-mod>ctrl</kbd>+<kbd>↵</kbd> play, or apply changes on the next bar</li>
+        <li><kbd data-mod>ctrl</kbd>+<kbd>.</kbd> stop at the end of the bar <span class="dim">(+shift: now)</span></li>
+        <li><kbd data-mod>ctrl</kbd>+<kbd>space</kbd> suggestions · <kbd>tab</kbd> insert</li>
+        <li>hover an underline to see what's wrong</li>
+      </ul>
+      <p class="dim">The full language guide is in the README.</p>
+    </section>
+  </aside>
+</main>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
