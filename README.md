@@ -1,9 +1,16 @@
-# cannoli
+# cannoli~
 
 A live-coding language for performing music. You write a few short
-**threads** (voices), then weave them with a small set of verbs, loops and
-conditions. Everything shares one key and one chord progression, so threads
-always fit together, and every change lands on the next downbeat.
+**threads** (voices) and change them with a small set of verbs, loops and
+conditions. Every thread shares one key and one chord progression, so they
+always fit together, and each change you make lands on the next downbeat.
+
+You can play it in two places:
+
+- **the web app**: an editor in the browser with the reference beside it
+- **the terminal**: an editor plus guide, visual, reference and beat-grid panes, set up for performing
+
+![The web app: the editor, with the live panel showing what each thread plays](docs/screenshots/web-editor.png)
 
 ```
 key d minor
@@ -21,14 +28,174 @@ kick: hits 4 16 > kick
 hats: hits 7 16 > hat > gain 0.4
 ```
 
-**Ctrl+Enter** plays, and applies changes at the next bar. **Ctrl+.** stops
-at the end of the bar.
+---
 
-The **cheat sheet** (`sheet.html`, or the "sheet" button in the app) lists
-every verb, groove and style, explains how a line works, and has a song for
-each style with notes on how it's built.
+## Contents
 
-## Stopping a line
+- [Get it](#get-it)
+- [The web app](#the-web-app): run it, host it, use it
+- [The terminal version](#the-terminal-version): install it, open the stage, use it
+- [The language](#the-language): lines, patterns, verbs, styles, functions
+- [Themes](#themes) · [Development](#development)
+
+## Get it
+
+```bash
+git clone https://github.com/Mariaareadne1/cannoli-livecodinglangueage.git cannoli
+cd cannoli
+npm install
+```
+
+The web app only needs the files. `npm install` adds the audio engine for the
+terminal version (Node.js 22 or newer).
+
+---
+
+## The web app
+
+### Run it on your computer
+
+```bash
+npm run web
+```
+
+Then open **http://localhost:5460**. To use another port, run
+`npm run web -- 8080`. Any static file server works too, for example
+`python3 -m http.server`. Opening `index.html` straight from Finder won't
+work, because browsers only load the app's modules over http.
+
+### Host it online
+
+The app is plain HTML, CSS and JavaScript with no build step, so any static
+host can serve the project folder as it is.
+
+**GitHub Pages:**
+
+1. On GitHub, open the repository's **Settings → Pages**.
+2. Under **Build and deployment**, choose **Deploy from a branch**, then
+   branch **main** and folder **/ (root)**. Save.
+3. After a minute it's live at
+   `https://<your-username>.github.io/cannoli-livecodinglangueage/`.
+
+**Netlify, Vercel, Cloudflare Pages and similar:** create a site from the
+repository, with no build command and the repository root as the publish
+directory.
+
+Songs are saved in the visitor's own browser, so nothing needs a server.
+
+### Use it
+
+1. Pick a starter from the examples menu in the header, or keep the one that's open.
+2. Press **Ctrl+Enter** (⌘+Enter on a Mac) to play.
+3. Edit anything and press **Ctrl+Enter** again. The change lands on the next bar, so it never stumbles.
+4. **Ctrl+.** stops at the end of the bar. **Ctrl+Shift+.** stops right away.
+
+| | |
+|---|---|
+| **suggestion card** | pops up as you type. **↑ ↓** choose, **Tab** inserts the word, **Shift+Tab** writes out the whole line it shows, **Esc** closes. **Ctrl+Space** opens it anywhere. |
+| **fill in the blank** | type a thread name and a colon (`hats: `), a `def` (`def lift n = `) or a variable (`theme = `) and the card offers whole lines to finish it, matched to the name and the style |
+| **problems** | mistakes are underlined; hover one to see what's wrong and click its fix. The problems panel has **fix all**. |
+| **style** | the style menu sets the feel (rave, house, funk, chill) by writing the `style` line |
+| **theme** | the theme menu (see [Themes](#themes)) |
+| **reference** | the **reference** button opens the cheat sheet beside the editor. Drag the divider to resize it. The "load into the editor" button on any song puts that song in the editor. |
+
+![Fill in the blank: after "lead: " the card offers whole lines](docs/screenshots/web-fill.png)
+
+![The reference open beside the editor](docs/screenshots/web-reference.png)
+
+The cheat sheet also works on its own page: `sheet.html`.
+
+---
+
+## The terminal version
+
+For performing: the editor fills one window and the other panes sit beside it.
+
+![The stage: editor, guide, visual, reference and threads](docs/screenshots/terminal-stage.png)
+
+### Install it
+
+From the project folder (after `npm install` above):
+
+```bash
+npm link
+```
+
+That puts a `cannoli` command on your PATH, so you can run it from any
+folder. Without `npm link`, run `npm run stage -- …` from inside the
+project folder, or `node cli/cannoli.js …` from anywhere.
+
+### Open the stage
+
+```bash
+cannoli stage songs/baile-no-morro.cannoli --all
+```
+
+The window you type that in becomes the editor, and the other panes open
+around it:
+
+| Where you are | What `stage` does |
+|---|---|
+| tmux installed | one tmux window, split into panes |
+| a Mac without tmux | Terminal windows arranged across the screen. The first time, macOS asks to let Terminal control Terminal: allow it. |
+| anywhere else | prints the commands, one per terminal window |
+
+| Flag | |
+|---|---|
+| *(none)* | editor, guide and visual |
+| `--all` | all five: editor, guide, visual, reference and threads |
+| `--threads` / `--reference` | add just that one |
+| `--theme=deep` | a theme family (each pane gets its own tone of it) |
+| `--dry` | show what it would open without opening anything |
+
+If the song file doesn't exist yet, the editor starts on an empty page and
+saves to that name. Songs to start from are in [`songs/`](songs).
+
+### The panes
+
+You can also start each pane yourself, in its own terminal, in any order.
+They find the editor by themselves.
+
+| Pane | Command | What it is |
+|---|---|---|
+| editor | `cannoli edit song.cannoli` | where you write; it plays the music |
+| guide | `cannoli guide` | explains the line you're on, shows problems and fixes, suggests what's next. **Tab** switches to the reference. |
+| reference | `cannoli reference` | every verb, groove and style (**↑ ↓** scroll) |
+| visual | `cannoli visual` | an ASCII shark drifting through a dotted sea. It swells on the kick and lets off a bubble per note; ripples, a tide along the bottom and flashing dots follow the beat. **v** cycles: both layers · shark only · beat only |
+| threads | `cannoli threads` | the beat grid: what each thread plays this bar |
+
+### Editor keys
+
+| Key | |
+|---|---|
+| `ctrl+s` | play, or apply changes on the next bar (also saves) |
+| `ctrl+t` | stop at the end of the bar (twice: stop now) |
+| `tab` | insert the suggestion on the card (`↑ ↓` choose, `esc` closes) |
+| `shift+tab` | write out the whole line the card shows |
+| `ctrl+e` | choose a style (rave, house, funk, chill, none). It rewrites the `style` line; while playing, it lands on the next bar |
+| `ctrl+f` | apply the fix for the problem on this line |
+| `ctrl+g` | next theme |
+| `ctrl+z` / `ctrl+y` | undo / redo |
+| `ctrl+q` | save and quit |
+
+![In the terminal, a blank thread offers whole lines to fill in](docs/screenshots/terminal-fill.png)
+
+![A verb's card shows the whole line it would write](docs/screenshots/terminal-whole-line.png)
+
+### If something goes wrong
+
+| What you see | What to do |
+|---|---|
+| `ENOENT … package.json` | `npm run stage` only works inside the project folder: `cd` into it first, or use `cannoli stage …` after `npm link` |
+| panes say "waiting for the editor" | start the editor (`cannoli edit …`); the panes connect when it's up |
+| "no sound device found" | the editor still edits; plug in or pick an output device and reopen it |
+| the stage didn't arrange windows | allow Terminal under **System Settings → Privacy & Security → Automation**, or install tmux (`brew install tmux`) |
+
+---
+
+## The language
+
+### Stopping a line
 
 | Do this | What happens |
 |---|---|
@@ -40,7 +207,7 @@ each style with notes on how it's built.
 
 ---
 
-## Lines
+### Lines
 
 | Line | Meaning |
 |---|---|
@@ -57,7 +224,7 @@ each style with notes on how it's built.
 | `  > …` | a line starting with `>` continues the thread above |
 | `# …` | a comment. Comment out a line to mute it. |
 
-## Patterns
+### Patterns
 
 One bar is one cycle. A pattern divides the bar evenly between its steps.
 
@@ -77,7 +244,7 @@ One bar is one cycle. A pattern divides the bar evenly between its steps.
 | `rand 4` | 4 random steps, new every bar |
 | `beat tamborzao` | a named groove (see Styles) |
 
-## Arithmetic: patterns are numbers
+### Arithmetic: patterns are numbers
 
 | Write | Means |
 |---|---|
@@ -89,7 +256,7 @@ One bar is one cycle. A pattern divides the bar evenly between its steps.
 | `a then b` | `a` for a bar, then `b` |
 | `bar` | the current bar number (1, 2, 3 …) |
 
-## Loops and conditions
+### Loops and conditions
 
 ```
 for i 0..3 (theme + i)                    # four bars, climbing a step each bar
@@ -99,7 +266,7 @@ lead: theme > when bar % 8 == 0 (fast 2)  # any condition: == != < > <= >= and o
 lead: theme > maybe 0.3 shuffle           # 30% of bars
 ```
 
-## Verbs (after `>`)
+### Verbs (after `>`)
 
 | Group | Verbs |
 |---|---|
@@ -118,7 +285,7 @@ lead: theme > maybe 0.3 shuffle           # 30% of bars
 Chain verbs with `>`. Wrap several in parentheses to pass them as one:
 `every 4 (rev > up 2)`.
 
-### Functions
+#### Functions
 
 ```
 def lift n = up n > fast 2       # a new verb
@@ -126,7 +293,7 @@ def motif n = 0 2 4 + n          # a new pattern
 lead: motif 1 > every 2 (lift 3)
 ```
 
-## Styles
+### Styles
 
 One line sets the feel. It changes the defaults (tempo, swing, drum kit,
 mix) and what the suggestion cards put first. It never changes the language.
@@ -141,7 +308,7 @@ mix) and what the suggestion cards put first. It never changes the language.
 A `tempo` line still wins over the style's tempo. The style menu in the
 header writes the `style` line for you, and each style has a starter piece.
 
-### Grooves
+#### Grooves
 
 `beat name` plays a named 16-step rhythm, like any other pattern:
 
@@ -165,14 +332,14 @@ kick: beat tamborzao > kick
 stab: chord > mask (beat tresillo) > stab
 ```
 
-### Electronic sounds
+#### Electronic sounds
 
 `supersaw` (wide rave lead), `acid` (squelchy 303-style bass), `stab`
 (punchy chord stab), `sub` (deep sub bass), `boom` (a pitched 808 that slides
 into the note), plus drums `cowbell` and `shaker`. `sub` and `boom` sit in the
 bass range on their own.
 
-## Always sounds good
+### Always sounds good
 
 - **One key.** Numbers are steps in the key, so threads can't be in different scales.
 - **Downbeat lock.** Notes on the beat snap to the nearest note of the current chord. Notes between beats stay free, so melodies still move. `free` turns this off; `tight` locks every note.
@@ -181,7 +348,7 @@ bass range on their own.
 - **Mix.** Non-bass threads are kept out of the low end, the master is warmed and limited, and a small room is always on.
 - **Escape hatch.** `3#` and `free` let you be dissonant on purpose.
 
-## Signature effects
+### Signature effects
 
 | Effect | What it does |
 |---|---|
@@ -191,53 +358,28 @@ bass range on their own.
 | `pump` | ducks on every beat, breathing with the kick |
 | `air` | a soft noise layer on each note |
 
-## Performing from the terminal
-
-```
-npm install
-node cli/cannoli.js stage song.cannoli
-```
-
-`stage` turns your terminal into the editor and opens the other panes beside
-it (with tmux if it's installed, otherwise as Terminal windows on a Mac). Each
-pane can also be started on its own, in any order — they find the editor by
-themselves:
-
-| Pane | Command | What it is |
-|---|---|---|
-| editor | `node cli/cannoli.js edit song.cannoli` | an empty page with a title bar; it plays the music |
-| guide | `node cli/cannoli.js guide` | explains the line you're on, shows problems and fixes as you type, suggests what's next; **tab** switches to the full reference |
-| visual | `node cli/cannoli.js visual` | an ASCII shark drifting through a dotted sea; it swells on the kick and lets off a bubble per note. A beat layer adds ripples on each kick, a glyph tide along the bottom (one band per thread) and dots that flash on the beat. **v** cycles: both · shark only · beat only |
-| threads | `node cli/cannoli.js threads` | the beat grid (add `--threads` to `stage`) |
-
-Editor keys:
-
-| Key | |
-|---|---|
-| `ctrl+s` | play, or apply changes on the next bar (also saves) |
-| `ctrl+t` | stop at the end of the bar (twice: now) |
-| `tab` | accept the suggestion card that pops up as you type (`↑ ↓` choose, `esc` closes) |
-| `ctrl+e` | choose a style (rave, house, funk, chill, none) — rewrites the `style` line; if playing, it lands on the next bar |
-| `ctrl+f` | apply the fix for the problem on this line |
-| `ctrl+g` | next theme |
-| `ctrl+z` / `ctrl+y` | undo / redo |
-| `ctrl+q` | save and quit |
-
-Run `npm link` once to use plain `cannoli stage …` from anywhere.
-
 ## Themes
 
-Three themes, shared by the web app (theme menu in the header) and every
-terminal pane (`ctrl+g` in the editor, or `--theme=` on any pane):
+The web app's theme menu and the terminal (`ctrl+g` in the editor, or
+`--theme=` on any pane) share the same themes:
 
 | Theme | Colours |
 |---|---|
 | `deep` | dark navy, white, light blue, gray |
+| `deep-black`, `deep-white` | the same palette on black or on white |
 | `rose` | black, light pink, dark pink, white |
+| `rose-berry` | rose on deep berry |
 | `bubblegum` | light pink background, dark pink and black |
+
+In the terminal, `--theme=deep` or `--theme=rose` picks a **family**: each
+pane gets its own tone of it, so the stage reads as one set of windows
+(the editor navy, the guide white, the visual black…). A single theme name
+such as `--theme=deep-white` gives every pane the same tone. Your last
+choice is remembered in `~/.cannoli.json`.
 
 ## Development
 
-```
-npm test
+```bash
+npm test        # the test suite
+npm run web     # the web app on http://localhost:5460
 ```
