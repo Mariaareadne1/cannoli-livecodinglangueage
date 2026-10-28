@@ -491,11 +491,13 @@ export async function edit(file = "song.cannoli", opts = {}) {
 async function makeEngine() {
   try {
     const { AudioContext } = await import("node-web-audio-api");
-    return new Engine({ AudioContext });
+    // changes land on the next bar anyway, so a bigger buffer costs nothing and rides out busy moments
+    return new Engine({ AudioContext, latencyHint: "playback" });
   } catch {
     return null;
   }
 }
+
 
 function plain(err) {
   return { start: err.start, end: err.end, message: err.message, fix: err.fix };

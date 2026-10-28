@@ -2,13 +2,19 @@
    cannoli — synths
    One function per sound, plus the per-note parts of the
    signature effects (tape, pump, air). Every note builds a
-   small graph:  source → tone filter → envelope → [pump] → pan
-   and sends to the room and bloom buses.
+   small graph:  source → tone filter → envelope → [pump] → [pan]
+   into a shared bus: "low" for bass, "upper" (which cuts the low end)
+   for everything else; the engine sends those buses to the room. Nodes
+   that would do nothing (no pump, centre pan) are left out. When its sounds have
+   ended, the note disconnects that graph: some Web Audio
+   engines (the terminal's) keep computing finished nodes until
+   the garbage collector frees them, and that builds up into
+   crackles.
    ============================================================ */
 
 const NOTE_LEVEL = 0.22;
-const LOW_CUT_HZ = 140;          // keeps non-bass threads out of the low end
-const ROOM_SEND = 0.12;
+export const LOW_CUT_HZ = 140;   // keeps non-bass threads out of the low end (the engine's "upper" bus)
+export const ROOM_SEND = 0.12;   // how much of every note goes to the room (sent once, from the buses)
 
 const ENVELOPES = {
   saw:    { a: 0.005, d: 0.2,  s: 0.7, r: 0.15 },
@@ -28,23 +34,26 @@ const ENVELOPES = {
 const FILTER_SWEEP = { pluck: [2.5, 0.08, 0.7], acid: [5, 0.12, 14], stab: [3, 0.06, 2] };
 
 const noiseCache = new WeakMap();
+const RAW = Symbol("the real AudioContext");
 
 /**
  * @param {AudioContext} ctx
- * @param {{ out: AudioNode, room: AudioNode, bloom: AudioNode }} buses
+ * @param {{ low: AudioNode, upper: AudioNode, bloom: AudioNode }} buses
  * @param {{ midi: number[], drum: string|null, time: number, seconds: number, beatTimes: number[],
  *           duckTimes: number[], props: Record<string, any>, level: number }} note
  */
-export function playNote(ctx, buses, note) {
+export function playNote(audio, buses, note) {
+  const { ctx, made } = tracking(audio);
+  buildNote(ctx, buses, note);
+  releaseWhenDone(made);
+}
+
+function buildNote(ctx, buses, note) {
   const { props } = note;
-  const pan = ctx.createStereoPanner();
-  pan.pan.value = clamp(props.pan, -1, 1);
-  pan.connect(buses.out);
-  sendTo(ctx, pan, buses.room, ROOM_SEND);
-  if (props.bloom > 0) sendTo(ctx, pan, buses.bloom, props.bloom);
+  const out = noteOutput(ctx, buses, props, note.drum || props.range === "low" ? buses.low : buses.upper);
 
   if (note.drum) {
-    DRUMS[note.drum](ctx, pan, note.time, clamp(props.gain, 0, 1) * 0.9, KITS[props.kit] ?? KITS.house);
+    DRUMS[note.drum](ctx, out, note.time, clamp(props.gain, 0, 1) * 0.9, KITS[props.kit] ?? KITS.house);
     return;
   }
 
@@ -53,14 +62,18 @@ export function playNote(ctx, buses, note) {
   const level = (NOTE_LEVEL * clamp(props.gain, 0, 1.5)) / Math.sqrt(note.midi.length);
 
   // pump (and automatic ducking of the bass under the kick)
-  const duck = ctx.createGain();
-  const pumpTimes = props.pump > 0 ? note.beatTimes : props.range === "low" ? note.duckTimes : [];
+  const pumpTimes = (props.pump > 0 ? note.beatTimes : props.range === "low" ? note.duckTimes : [])
+    .filter((t) => t >= note.time - 0.01 && t < end + env.r);
   const depth = props.pump > 0 ? props.pump * 0.8 : 0.35;
-  pumpTimes.filter((t) => t >= note.time - 0.01 && t < end + env.r).forEach((t) => {
-    duck.gain.setValueAtTime(1 - depth, Math.max(note.time, t));
-    duck.gain.linearRampToValueAtTime(1, Math.max(note.time, t) + 0.18);
-  });
-  duck.connect(pan);
+  let duck = out;
+  if (pumpTimes.length) {
+    duck = ctx.createGain();
+    pumpTimes.forEach((t) => {
+      duck.gain.setValueAtTime(1 - depth, Math.max(note.time, t));
+      duck.gain.linearRampToValueAtTime(1, Math.max(note.time, t) + 0.18);
+    });
+    duck.connect(out);
+  }
 
   const amp = ctx.createGain();
   amp.gain.setValueAtTime(0, note.time);
@@ -74,13 +87,6 @@ export function playNote(ctx, buses, note) {
   tone.frequency.value = 300 * Math.pow(2, clamp(props.bright, 0, 1) * 5.3);
   tone.Q.value = 0.7;
   let head = tone;
-  if (props.range !== "low") {
-    const lowCut = ctx.createBiquadFilter();
-    lowCut.type = "highpass";
-    lowCut.frequency.value = LOW_CUT_HZ;
-    tone.connect(lowCut);
-    head = lowCut;
-  }
   if (props.tape > 0) head = tapeSaturate(ctx, head, props.tape);
   head.connect(amp).connect(duck);
 
@@ -97,18 +103,75 @@ export function playNote(ctx, buses, note) {
   if (props.air > 0) addAir(ctx, amp, props.air, note.time, stopAt);
 }
 
+/* Where a note's sound leaves: a panner only when it's off centre, and a bloom send when asked for. */
+function noteOutput(ctx, buses, props, bus) {
+  const panAt = clamp(props.pan, -1, 1);
+  let out = bus;
+  if (panAt) {
+    out = ctx.createStereoPanner();
+    out.pan.value = panAt;
+    out.connect(bus);
+  }
+  if (props.bloom > 0) {
+    // the send needs its own node to tap: a gain in front of the bus
+    const tap = ctx.createGain();
+    tap.connect(out);
+    sendTo(ctx, tap, buses.bloom, props.bloom);
+    out = tap;
+  }
+  return out;
+}
+
+/* ---------- cleaning up after a note ---------- */
+
+/* A view of the context that remembers every node a note makes. */
+function tracking(ctx) {
+  const made = [];
+  const view = new Proxy(ctx, {
+    get(target, prop) {
+      if (prop === RAW) return target;
+      const value = Reflect.get(target, prop, target);
+      if (typeof value !== "function") return value;
+      if (typeof prop === "string" && prop.startsWith("create") && prop !== "createBuffer") {
+        return (...args) => {
+          const node = value.apply(target, args);
+          made.push(node);
+          return node;
+        };
+      }
+      return value.bind(target);
+    },
+  });
+  return { ctx: view, made };
+}
+
+/* Once every source in the note has stopped, disconnect all of its nodes. */
+function releaseWhenDone(made) {
+  const sources = made.filter((n) => typeof n.stop === "function");
+  let playing = sources.length;
+  sources.forEach((src) => {
+    src.onended = () => {
+      playing -= 1;
+      if (playing > 0) return;
+      made.forEach((n) => n.disconnect());
+      sources.forEach((s) => { s.onended = null; });
+      made.length = 0;   // let go, so the nodes can be freed
+    };
+  });
+}
+
 /* ---------- sound sources: each returns its oscillators ---------- */
 
 const SOURCES = {
-  saw: (ctx, dest, f, t, stop) => [-7, 7].map((cents) => osc(ctx, dest, "sawtooth", f, t, stop, cents, 0.5)),
+  saw: (ctx, dest, f, t, stop) => detuned(ctx, dest, "sawtooth", f, t, stop, [-7, 7], 0.5),
   square: (ctx, dest, f, t, stop) => [osc(ctx, dest, "square", f, t, stop, 0, 0.45)],
   tri: (ctx, dest, f, t, stop) => [osc(ctx, dest, "triangle", f, t, stop, 0, 1)],
   sine: (ctx, dest, f, t, stop) => [osc(ctx, dest, "sine", f, t, stop, 0, 1)],
   pluck: (ctx, dest, f, t, stop) => [osc(ctx, dest, "sawtooth", f, t, stop, 0, 0.7), osc(ctx, dest, "triangle", f * 2, t, stop, 0, 0.3)],
-  pad: (ctx, dest, f, t, stop) => [-10, 0, 10].map((cents) => osc(ctx, dest, "sawtooth", f, t, stop, cents, 0.35)),
-  supersaw: (ctx, dest, f, t, stop) => [-24, -14, -6, 0, 6, 14, 24].map((cents) => osc(ctx, dest, "sawtooth", f, t, stop, cents, 0.2)),
+  pad: (ctx, dest, f, t, stop) => detuned(ctx, dest, "sawtooth", f, t, stop, [-10, 0, 10], 0.35),
+  supersaw: (ctx, dest, f, t, stop) => detuned(ctx, dest, "sawtooth", f, t, stop, [-24, -14, -6, 0, 6, 14, 24], 0.2),
   acid: (ctx, dest, f, t, stop) => [osc(ctx, dest, "sawtooth", f, t, stop, 0, 0.8)],
-  stab: (ctx, dest, f, t, stop) => [-8, 0, 8].map((cents) => osc(ctx, dest, "sawtooth", f, t, stop, cents, 0.4)),
+  stab: (ctx, dest, f, t, stop) => detuned(ctx, dest, "sawtooth", f, t, stop, [-8, 0, 8], 0.4),
   sub: (ctx, dest, f, t, stop) => [osc(ctx, dest, "sine", f, t, stop, 0, 1), osc(ctx, dest, "triangle", f, t, stop, 0, 0.15)],
   boom: (ctx, dest, f, t, stop) => {
     const shaper = ctx.createWaveShaper();
@@ -132,14 +195,34 @@ const SOURCES = {
   },
 };
 
+/* Several oscillators a few cents apart, sharing one level. */
+function detuned(ctx, dest, type, freq, t, stop, cents, gain) {
+  const g = ctx.createGain();
+  g.gain.value = gain;
+  g.connect(dest);
+  return cents.map((c) => {
+    const o = ctx.createOscillator();
+    o.type = type;
+    o.frequency.value = freq;
+    o.detune.value = c;
+    o.connect(g);
+    startStop([o], t, stop);
+    return o;
+  });
+}
+
 function osc(ctx, dest, type, freq, t, stop, cents, gain) {
   const o = ctx.createOscillator();
   o.type = type;
   o.frequency.value = freq;
   o.detune.value = cents;
-  const g = ctx.createGain();
-  g.gain.value = gain;
-  o.connect(g).connect(dest);
+  if (gain === 1) {
+    o.connect(dest);
+  } else {
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    o.connect(g).connect(dest);
+  }
   startStop([o], t, stop);
   return o;
 }
@@ -282,7 +365,8 @@ function startStop(nodes, t, stop) {
   });
 }
 
-export function noise(ctx) {
+export function noise(view) {
+  const ctx = view[RAW] ?? view;   // one buffer per context, not per note
   if (!noiseCache.has(ctx)) {
     const buf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const data = buf.getChannelData(0);

@@ -13,7 +13,7 @@
 import { renderBar, harmonyAt } from "../core/render.js";
 import { MODES } from "../core/harmony.js";
 import { STYLES } from "../core/styles.js";
-import { playNote, saturationCurve, noise, mtof } from "./synths.js";
+import { playNote, saturationCurve, noise, mtof, LOW_CUT_HZ, ROOM_SEND } from "./synths.js";
 
 const TICK_MS = 25;
 const LOOKAHEAD_S = 0.3;
@@ -31,9 +31,14 @@ const MIXES = {
 };   // headroom so kick transients that slip past the limiter don't clip
 
 export class Engine {
-  /** @param {{ AudioContext?: typeof AudioContext }} [opts]  pass one in to run outside a browser */
-  constructor({ AudioContext: Ctx } = {}) {
+  /**
+   * @param {{ AudioContext?: typeof AudioContext, latencyHint?: string }} [opts]
+   *   AudioContext: pass one in to run outside a browser
+   *   latencyHint: "playback" trades a few ms of delay for a bigger, steadier buffer
+   */
+  constructor({ AudioContext: Ctx, latencyHint = "interactive" } = {}) {
     this.AudioContextClass = Ctx ?? null;
+    this.latencyHint = latencyHint;
     this.ctx = null;
     this.program = null;
     this.pending = null;
@@ -186,7 +191,7 @@ export class Engine {
   async ensureContext() {
     if (!this.ctx) {
       const Ctx = this.AudioContextClass ?? (globalThis.AudioContext || globalThis.webkitAudioContext);
-      this.ctx = new Ctx({ latencyHint: "interactive" });
+      this.ctx = new Ctx({ latencyHint: this.latencyHint });
       this.build();
     }
     if (this.ctx.state !== "running") await this.ctx.resume();
@@ -243,7 +248,18 @@ export class Engine {
     });
     bloomOut.connect(input);
 
-    this.buses = { out: input, room, bloom };
+    // every note lands on one of two buses, which share a single send to the room
+    const low = ctx.createGain();
+    low.connect(input);
+    const roomSend = ctx.createGain();
+    roomSend.gain.value = ROOM_SEND;
+    low.connect(roomSend).connect(room);
+    const upper = ctx.createBiquadFilter();
+    upper.type = "highpass";
+    upper.frequency.value = LOW_CUT_HZ;
+    upper.connect(low);
+
+    this.buses = { low, upper, bloom };
   }
 
   applyMix(name, time) {
