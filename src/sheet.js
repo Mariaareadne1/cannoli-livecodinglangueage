@@ -9,6 +9,8 @@ import { STYLES, BEATS } from "./core/styles.js";
 import { MODES } from "./core/harmony.js";
 import { EXAMPLES } from "./examples.js";
 import { highlight } from "./editor/highlight.js";
+import { lexLine } from "./lang/lexer.js";
+import { verbLine, generatorLine, SECTION_EXAMPLES } from "./sheet-examples.js";
 import { compile } from "./lang/compile.js";
 import { codeLink } from "./share.js";
 import { applyTheme, savedTheme } from "./apply-theme.js";
@@ -39,14 +41,33 @@ const GROUP_TITLES = {
 };
 
 const ARG_WORDS = { num: "n", "num?": "[n]", step: "verb", pat: "pattern", cond: "condition", "else?": "[else verb]", word: "name" };
+const COPIED_MS = 1200;
 
 /* ---------- small builders ---------- */
 
-const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+function copyButton(src) {
+  return `<button class="sh-copy" type="button" data-copy="${esc(src)}" title="copy, then paste into the editor">copy</button>`;
+}
 
 function code(src) {
   const { symbols } = compile(src);
-  return `<pre class="ed-hl sh-code">${highlight(src, symbols)}</pre>`;
+  return `<div class="sh-codebox"><pre class="ed-hl sh-code">${highlight(src, symbols)}</pre>${copyButton(src)}</div>`;
+}
+
+function examples(id) {
+  return `<h3>examples — copy any of these into the editor</h3>${code(SECTION_EXAMPLES[id])}`;
+}
+
+/* A whole line you can paste, the parts that are yours to change underlined, and what they mean. */
+function fullLine({ line, tweak, hints }) {
+  const changeable = new Set(tweak
+    ? lexLine(line).tokens.filter((t) => t.start >= tweak[0] && t.end <= tweak[1] && !"()".includes(t.text)).map((t) => t.start)
+    : []);
+  const notes = hints.map(([word, hint]) => `<b>${esc(word)}</b> ${esc(hint)}`).join("<br>");
+  return `<div class="sh-line"><code class="ed-hl sh-full">${highlight(line, { active: changeable })}</code>${copyButton(line)}</div>`
+    + (notes ? `<p class="sh-try">${notes}</p>` : "");
 }
 
 function inline(src) {
@@ -140,12 +161,12 @@ function verbs() {
     const rows = entries.map(([name, v]) => [
       `<strong class="sh-name">${esc([name, ...v.args.map((a) => ARG_WORDS[a] ?? a)].join(" "))}</strong>`,
       esc(v.doc),
-      inline(v.example),
+      fullLine(verbLine(name)),
     ]);
-    return `<h3>${GROUP_TITLES[group] ?? group}</h3>${table(["verb", "what it does", "example"], rows)}`;
-  }).join("") + `<h3>generators — words that make a pattern</h3>${table(["write", "what it makes", "example"],
+    return `<h3>${GROUP_TITLES[group] ?? group}</h3>${table(["verb", "what it does", "a whole line · what to change"], rows)}`;
+  }).join("") + `<h3>generators — words that make a pattern</h3>${table(["write", "what it makes", "a whole line · what to change"],
     Object.entries(GENERATORS).map(([name, g]) => [
-      `<strong class="sh-name">${esc([name, ...g.args.map((a) => ARG_WORDS[a] ?? a)].join(" "))}</strong>`, esc(g.doc), inline(g.example),
+      `<strong class="sh-name">${esc([name, ...g.args.map((a) => ARG_WORDS[a] ?? a)].join(" "))}</strong>`, esc(g.doc), fullLine(generatorLine(name)),
     ]))}`;
 }
 
@@ -155,7 +176,7 @@ function grooves() {
     `<span class="sh-steps">${[...b.steps].map((c, i) => `<i class="${c === "x" ? "on" : ""}${i % 4 === 0 ? " beat" : ""}"></i>`).join("")}</span>`,
     esc(b.doc),
   ]);
-  return table(["beat …", "16 steps", "feel"], rows) + code("kick: beat tamborzao > kick\nstab: chord > mask (beat tresillo) > stab");
+  return table(["beat …", "16 steps", "feel"], rows) + examples("grooves");
 }
 
 function styles() {
@@ -184,16 +205,49 @@ function songs() {
 
 document.getElementById("sheet").innerHTML = [
   section("line", "how a line works", lineAnatomy()),
-  section("stop", "starting and stopping", stopping(), "Changes, mutes and stops all land on the next bar line, so you can't fall out of time."),
-  section("settings", "lines", lines()),
-  section("patterns", "patterns, arithmetic, loops and conditions", patterns()),
-  section("verbs", "every verb", verbs(), "Verbs go after <code>&gt;</code>. Group several in parentheses to pass them as one: <code>every 4 (rev &gt; up 2)</code>."),
+  section("stop", "starting and stopping", stopping() + examples("stop"), "Changes, mutes and stops all land on the next bar line, so you can't fall out of time."),
+  section("settings", "lines", lines() + examples("settings")),
+  section("patterns", "patterns, arithmetic, loops and conditions", patterns() + examples("patterns")),
+  section("verbs", "every verb", examples("verbs") + verbs(), "Verbs go after <code>&gt;</code>. Group several in parentheses to pass them as one: <code>every 4 (rev &gt; up 2)</code>. "
+    + "Every example below is a whole line: copy it into the editor as it is. <span class=\"sh-tweak-key\">Underlined</span> parts are yours to change; the note under the line says what they mean."),
   section("grooves", "grooves", grooves(), "Named 16-step rhythms for <code>beat name</code>. Each lit square is a hit; the brighter edge marks each beat."),
-  section("styles", "styles", styles(), "One line at the top sets the feel. A tempo line still wins over the style's tempo."),
+  section("styles", "styles", styles() + examples("styles"), "One line at the top sets the feel. A tempo line still wins over the style's tempo."),
   section("songs", "songs to learn from", songs(), "Each one builds over time. Open it, press ctrl+enter, and watch which lines light up."),
 ].join("");
 
 document.getElementById("printBtn").addEventListener("click", () => window.print());
+
+document.getElementById("sheet").addEventListener("click", async (e) => {
+  const button = e.target.closest("[data-copy]");
+  if (!button) return;
+  const copied = await copyText(button.dataset.copy);
+  if (!copied) selectCode(button);   // so ⌘C / ctrl+C still works
+  button.textContent = copied ? "copied" : "press ⌘C";
+  setTimeout(() => { button.textContent = "copy"; }, COPIED_MS);
+});
+
+function selectCode(button) {
+  const target = button.parentElement.querySelector("pre, code");
+  const range = document.createRange();
+  range.selectNodeContents(target);
+  getSelection().removeAllRanges();
+  getSelection().addRange(range);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // older browsers, or a frame without clipboard access
+    const area = Object.assign(document.createElement("textarea"), { value: text });
+    document.body.append(area);
+    area.select();
+    const ok = document.execCommand("copy");
+    area.remove();
+    return ok;
+  }
+}
 
 if (embedded) {
   document.getElementById("sheet").addEventListener("click", (e) => {

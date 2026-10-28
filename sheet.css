@@ -110,3 +110,32 @@ body.embedded .sh-section { padding-top: 18px; scroll-margin-top: 90px; }
 body.embedded .sh-section h2 { font-size: 17px; }
 body.embedded .sh-song-body { grid-template-columns: 1fr; }
 body.embedded .sh-table td:first-child { white-space: normal; }
+
+/* copyable code: blocks and whole lines */
+.sh-codebox { position: relative; }
+.sh-copy {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg-3);
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.sh-copy:hover, .sh-copy:focus-visible { color: var(--ink); border-color: var(--accent); }
+.sh-codebox .sh-copy { position: absolute; top: 8px; right: 8px; }
+.sh-line { display: flex; align-items: center; gap: 8px; }
+.ed-hl.sh-full { padding: 2px 8px; border-radius: 4px; background: var(--bg-3); font-size: 12.5px; white-space: pre; overflow-x: auto; }
+/* the parts you can change: underlined, not lit up like a playing note */
+.sh-full .on, .sh-tweak-key {
+  color: inherit;
+  background: none;
+  box-shadow: none;
+  text-decoration: underline dotted var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.sh-try { margin: 4px 0 0; font-size: 11.5px; color: var(--ink-faint); line-height: 1.5; }
+.sh-try b { color: var(--soft); font-weight: 600; }
+@media print { .sh-copy { display: none; } }
