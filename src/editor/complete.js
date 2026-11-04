@@ -76,13 +76,13 @@ function threadBodies(name, symbols) {
   const groove = STYLES[symbols.style]?.beats?.[0] ?? "fourfloor";
   const melody = symbols.vars?.[0] ?? MOTIF;
   const bodies = [
-    ["kick", `beat ${groove} > kick`, "a kick on the style's main groove"],
-    ["snare", "beat backbeat > snare", "a snare on beats 2 and 4"],
-    ["clap", "beat backbeat > clap", "a clap on beats 2 and 4"],
-    ["hat", "hits 7 16 > hat > gain 0.4", "quiet, busy hats spread across the bar"],
-    ["bass", "0 . 0 4 > low > saw > pump", "a bassline that breathes with the kick"],
+    ["kick", `beat ${groove} > bd`, "a kick on the style's main groove"],
+    ["snare", "beat backbeat > sd", "a snare on beats 2 and 4"],
+    ["clap", "beat backbeat > cp", "a clap on beats 2 and 4"],
+    ["hat", "euclid 7 16 > hh > gain 0.4", "quiet, busy hats spread across the bar"],
+    ["bass", "0 . 0 4 > low > sawtooth > pump", "a bassline that breathes with the kick"],
     ["pad", "chord > slow 2 > pad > bloom", "the chords, held for two bars, ringing in the key"],
-    ["lead", `${melody} > every 4 rev > high > tri`, "a melody up high, backwards every 4th bar"],
+    ["lead", `${melody} > every 4 rev > high > triangle`, "a melody up high, backwards every 4th bar"],
     ["arp", "chord > arp > fast 2 > high > pluck", "the chord, one note at a time"],
   ];
   const lower = name.toLowerCase();
@@ -99,7 +99,7 @@ function defBodies([param]) {
     ];
   }
   return [
-    [`when bar <= ${param} mute`, `a verb: silent until bar ${param} + 1, for build-ups ("> enter 8")`],
+    [`when bar <= ${param} hush`, `a verb: silent until bar ${param} + 1, for build-ups ("> enter 8")`],
     [`up ${param} > fast 2`, `a verb: ${param} steps up, twice as fast`],
     [`every ${param} rev`, `a verb: backwards every ${param}th bar`],
     [`0 2 4 + ${param}`, `a pattern: a motif that starts ${param} steps up`],
@@ -110,7 +110,7 @@ const VARIABLE_BODIES = [
   [MOTIF, "a motif: use it in any thread, add to it, multiply it"],
   ["run 8 * 3 % 7", "a melody from arithmetic: 0 3 6 2 5 1 4 0"],
   ["walk 8 > penta", "eight notes that wander, new every bar"],
-  ["hits 3 8", "a rhythm: 3 hits spread over 8 steps"],
+  ["euclid 3 8", "a rhythm: 3 hits spread over 8 steps"],
 ];
 
 function fills(bodies) {

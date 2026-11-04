@@ -31,7 +31,7 @@ test("your own defs are suggested as verbs", () => {
 test("in a pattern it suggests generators and your variables", () => {
   const r = at("a: th", { vars: ["theme"] });
   assert.deepEqual(labels(r), ["theme"]);
-  assert.ok(labels(at("a: hi")).includes("hits"));
+  assert.ok(labels(at("a: eu")).includes("euclid"));
 });
 
 test("key suggests notes, then modes", () => {
@@ -62,10 +62,10 @@ test("continuation lines know they are in a chain", () => {
 
 test("an empty thread body suggests whole lines, matched to the thread's name", () => {
   const r = at("kick: ", { style: "funk" });
-  assert.equal(r.items[0].insert, "beat tamborzao > kick");
+  assert.equal(r.items[0].insert, "beat tamborzao > bd");
   assert.equal(r.items[0].kind, "fill in");
-  assert.equal(r.items[0].detail, "kick: beat tamborzao > kick");
-  assert.equal(at("bass: ").items[0].insert, "0 . 0 4 > low > saw > pump");
+  assert.equal(r.items[0].detail, "kick: beat tamborzao > bd");
+  assert.equal(at("bass: ").items[0].insert, "0 . 0 4 > low > sawtooth > pump");
 });
 
 test("a melody body reuses a variable you wrote", () => {
@@ -74,7 +74,7 @@ test("a melody body reuses a variable you wrote", () => {
 
 test("a def body is written with the def's own parameter", () => {
   const r = at("def enter n = ");
-  assert.ok(r.items.some((s) => s.insert === "when bar <= n mute"));
+  assert.ok(r.items.some((s) => s.insert === "when bar <= n hush"));
   assert.ok(r.items.every((s) => s.kind === "fill in"));
   assert.ok(at("def wobble = ").items.length > 0);
 });

@@ -21,11 +21,11 @@ theme = 0 2 4 _ 6 4
 
 lead: theme
   > every 4 rev                # every 4th bar, backwards
-  > high > tri > ghost
-bass: 0 . 0 4 > low > saw > pump
+  > high > triangle > ghost
+bass: 0 . 0 4 > low > sawtooth > pump
 pad:  chord > slow 2 > pad > bloom
-kick: hits 4 16 > kick
-hats: hits 7 16 > hat > gain 0.4
+kick: euclid 4 16 > bd
+hats: euclid 7 16 > hh > gain 0.4
 ```
 
 ---
@@ -94,6 +94,7 @@ Songs are saved in the visitor's own browser, so nothing needs a server.
 |---|---|
 | **suggestion card** | pops up as you type. **↑ ↓** choose, **Tab** inserts the word, **Shift+Tab** writes out the whole line it shows, **Esc** closes. **Ctrl+Space** opens it anywhere. |
 | **fill in the blank** | type a thread name and a colon (`hats: `), a `def` (`def lift n = `) or a variable (`theme = `) and the card offers whole lines to finish it, matched to the name and the style |
+| **beat and bar grids** | type a drum thread (`kick: `, `drums: `, `hats: `) or `every ` and a small grid opens under the line. Click the beats or bars you want and it writes the code. **Esc** closes it, **Ctrl+B** uses it from the keyboard. Web app only for now: see [docs/terminal-todo.md](docs/terminal-todo.md). |
 | **problems** | mistakes are underlined; hover one to see what's wrong and click its fix. The problems panel has **fix all**. |
 | **style** | the style menu sets the feel (rave, house, funk, chill) by writing the `style` line |
 | **theme** | the theme menu (see [Themes](#themes)) |
@@ -195,15 +196,19 @@ They find the editor by themselves.
 
 ## The language
 
+### Coming from Strudel
+
+cannoli uses Strudel's name wherever a word does the same thing (`rev`, `fast`, `ply`, `clip`, `firstOf`, `euclid`, `hush`, `bd`, `sd`, `hh` …). Words that differ, like `every`, which fires on the last of n bars rather than the first, are listed in the cheat sheet's **coming from strudel** section, along with the words only cannoli has. Older cannoli names (`kick`, `saw`, `chop`, `mute`, `hits` …) still work.
+
 ### Stopping a line
 
 | Do this | What happens |
 |---|---|
 | `# lead: …` | comment the line out; it stops at the next bar after you press play |
-| `lead: … > mute` | silence the thread, keep the code |
+| `lead: … > hush` | silence the thread, keep the code |
 | `bass: … > solo` | only soloed threads play |
-| `> when bar <= 8 mute` | silent until bar 9: how songs build up |
-| `def enter n = when bar <= n mute` | a function for that, then `> enter 8` on any thread |
+| `> when bar <= 8 hush` | silent until bar 9: how songs build up |
+| `def enter n = when bar <= n hush` | a function for that, then `> enter 8` on any thread |
 
 ---
 
@@ -238,7 +243,7 @@ One bar is one cycle. A pattern divides the bar evenly between its steps.
 | `3#` `3b` | one semitone up / down: the only way to leave the key |
 | `0x3` | the same step three times |
 | `chord` | the current chord |
-| `hits 3 8` | 3 hits spread evenly across 8 steps (a Euclidean rhythm) |
+| `euclid 3 8` | 3 hits spread evenly across 8 steps (a Euclidean rhythm) |
 | `run 5` | 0 1 2 3 4 |
 | `walk 8` | 8 steps of a random walk, new every bar |
 | `rand 4` | 4 random steps, new every bar |
@@ -263,7 +268,7 @@ for i 0..3 (theme + i)                    # four bars, climbing a step each bar
 if bar > 8 then theme else theme * 2      # change after bar 8
 lead: theme > every 4 rev                 # every 4th bar
 lead: theme > when bar % 8 == 0 (fast 2)  # any condition: == != < > <= >= and or
-lead: theme > maybe 0.3 shuffle           # 30% of bars
+lead: theme > someCyclesBy 0.3 shuffle           # 30% of bars
 ```
 
 ### Verbs (after `>`)
@@ -271,14 +276,14 @@ lead: theme > maybe 0.3 shuffle           # 30% of bars
 | Group | Verbs |
 |---|---|
 | order | `rev` `rot n` `mirror` `shuffle` |
-| time | `fast n` `slow n` `chop n` `long` `short` |
-| pitch | `up n` `down n` `oct n` `flip` `penta` `arp` |
+| time | `fast n` `slow n` `ply n` `clip n` `long` `short` |
+| pitch | `scaleTranspose n` `up n` `down n` `oct n` `flip` `penta` `arp` |
 | structure | `grow` `stack p` `mask p` |
-| change over time | `every n verb` `when cond verb` `maybe p verb` `sometimes verb` `drift n` |
-| mix | `mute` `solo` |
+| change over time | `every n verb` `firstOf n verb` `lastOf n verb` `when cond verb` `someCyclesBy p verb` `someCycles verb` `drift n` |
+| mix | `hush` `solo` |
 | range | `low` `mid` `high` |
 | harmony | `free` (ignore the chord lock) `tight` (lock every note) |
-| sound | `saw` `square` `tri` `sine` `pluck` `pad` `bell` `supersaw` `acid` `stab` `sub` `boom` · drums: `kick` `snare` `hat` `open` `clap` `rim` `tom` `cowbell` `shaker` |
+| sound | `sawtooth` `square` `triangle` `sine` `pluck` `pad` `bell` `supersaw` `acid` `stab` `sub` `boom` · drums: `bd` `sd` `hh` `oh` `cp` `rim` `mt` `cb` `sh` |
 | color | `bright n` `gain n` `pan n` |
 | signature effects | `bloom` `ghost` `tape` `pump` `air` (each takes an optional amount 0–1) |
 
@@ -328,7 +333,7 @@ header writes the `style` line for you, and each style has a starter piece.
 | `lazy` | `x.......x..x....` | sparse downtempo |
 
 ```
-kick: beat tamborzao > kick
+kick: beat tamborzao > bd
 stab: chord > mask (beat tresillo) > stab
 ```
 
@@ -336,7 +341,7 @@ stab: chord > mask (beat tresillo) > stab
 
 `supersaw` (wide rave lead), `acid` (squelchy 303-style bass), `stab`
 (punchy chord stab), `sub` (deep sub bass), `boom` (a pitched 808 that slides
-into the note), plus drums `cowbell` and `shaker`. `sub` and `boom` sit in the
+into the note), plus drums `cb` (cowbell) and `sh` (shaker). `sub` and `boom` sit in the
 bass range on their own.
 
 ### Always sounds good

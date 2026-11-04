@@ -139,3 +139,6 @@ body.embedded .sh-table td:first-child { white-space: normal; }
 .sh-try { margin: 4px 0 0; font-size: 11.5px; color: var(--ink-faint); line-height: 1.5; }
 .sh-try b { color: var(--soft); font-weight: 600; }
 @media print { .sh-copy { display: none; } }
+
+.sh-names { display: flex; flex-wrap: wrap; gap: 6px; max-width: none; }
+.sh-none { color: var(--ink-faint); }

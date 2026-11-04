@@ -5,7 +5,7 @@ import { assistant, explainLine, reference, wrap } from "../cli/guide-text.js";
 const msg = (text, row = 0, extra = {}) => ({ text, cursor: { row, col: 0, offset: 0 }, problems: [], symbols: {}, ...extra });
 
 test("explains a thread line: what it is, its verbs and groove", () => {
-  const lines = explainLine(msg("kick: beat tamborzao > kick > every 2 rev")).map((l) => l.text);
+  const lines = explainLine(msg("kick: beat tamborzao > bd > every 2 rev")).map((l) => l.text);
   assert.match(lines[0], /kick: a thread/);
   assert.ok(lines.some((l) => l.startsWith("tamborzao")));
   assert.ok(lines.some((l) => l.startsWith("every")));

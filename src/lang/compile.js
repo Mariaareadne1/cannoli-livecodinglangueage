@@ -9,7 +9,7 @@
 import { lex } from "./lexer.js";
 import { parseStatement, scanDefs } from "./parser.js";
 import { CannoliError, closest } from "./errors.js";
-import { VERBS, GENERATORS, DRUM_NAMES } from "../core/verbs.js";
+import { VERBS, GENERATORS, DRUM_WORDS } from "../core/verbs.js";
 import {
   Pattern, pure, silence, sequence, stack, chordOf, then, times, choose, mapNotes, sorted, mod,
 } from "../core/pattern.js";
@@ -361,7 +361,7 @@ class Compiler {
   /* ---------- warnings ---------- */
 
   rangeWarnings() {
-    const melodic = this.asts.filter((a) => a.k === "thread" && !usesVerb(a.body, DRUM_NAMES));
+    const melodic = this.asts.filter((a) => a.k === "thread" && !usesVerb(a.body, DRUM_WORDS));
     const unplaced = melodic.filter((a) => !usesVerb(a.body, ["low", "mid", "high", "sub", "boom"]));
     unplaced.slice(1).forEach((a, i) => {
       const end = a.statement.end;

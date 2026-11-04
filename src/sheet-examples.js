@@ -8,30 +8,31 @@
 import { VERBS, GENERATORS } from "./core/verbs.js";
 
 const MOTIF = "0 2 4 _ 6 4";
-const DRUMS = new Set(["kick", "snare", "hat", "open", "clap", "rim", "tom", "cowbell", "shaker"]);
+const DRUMS = new Set(["bd", "sd", "hh", "oh", "cp", "rim", "mt", "cb", "sh"]);
+const DRUM_THREADS = { bd: "kick", sd: "snare", hh: "hats", oh: "open", cp: "clap", mt: "tom", cb: "bell", sh: "shaker" };
 const BASS_SOUNDS = new Set(["sub", "boom", "acid"]);
 const SOUND_FIRST = new Set(["mix", "effect", "color"]);   // these read better after the sound
-const DEFAULT_SOUND = { lead: "tri", bass: "saw", pad: "pad", hats: "hat" };
+const DEFAULT_SOUND = { lead: "triangle", bass: "sawtooth", pad: "pad", hats: "hh" };
 const THREAD_PATTERNS = { bass: "0 . 0 4", pad: "chord", stab: "chord" };
 const SAMPLE_AMOUNT = "0.6";   // shown after effects, whose amount is optional
 // the example's opening word, as a pattern you can paste anywhere
-const HEADS = { theme: MOTIF, lead: MOTIF, bass: "0 . 0 4", pad: "chord", hats: "hits 7 16" };
+const HEADS = { theme: MOTIF, lead: MOTIF, bass: "0 . 0 4", pad: "chord", hats: "euclid 7 16" };
 
 /* Lines that don't come out well from the verb's own example. */
 const OVERRIDES = {
   long: "pad: chord > pad > long",
-  stack: `lead: ${MOTIF} > stack (2 4 6) > tri`,
+  stack: `lead: ${MOTIF} > stack (2 4 6) > triangle`,
   mask: "stab: chord > mask (beat tresillo) > stab",
   arp: "arp: chord > arp > fast 2 > pluck",
-  low: "bass: 0 . 0 4 > low > saw",
+  low: "bass: 0 . 0 4 > low > sawtooth",
 };
 
 const GENERATOR_LINES = {
-  hits: "kick: hits 3 8 > kick",
+  euclid: "kick: euclid 3 8 > bd",
   run: "lead: run 8 * 3 % 7 > fast 2 > bell",
   walk: "lead: walk 8 > penta > pluck",
   rand: "lead: rand 4 > slow 2 > bell",
-  beat: "kick: beat tamborzao > kick",
+  beat: "kick: beat tamborzao > bd",
   chord: "pad: chord > slow 2 > pad",
 };
 
@@ -40,17 +41,21 @@ const NUMBER_HINTS = {
   rot: "how many places: 1, 2, 3",
   fast: "how many times faster: 2, 3, 1.5",
   slow: "over how many bars: 2, 4",
-  chop: "repeats per note: 2, 3, 4",
+  ply: "repeats per note: 2, 3, 4",
+  clip: "how long notes ring: 0.5 half, 2 double",
+  scaleTranspose: "how many steps: 2 up, -3 down",
+  firstOf: "the cycle length in bars: 2, 4, 8",
+  lastOf: "the cycle length in bars: 2, 4, 8",
   up: "how many steps up: 1, 2, 4",
   down: "how many steps down: 1, 3, 5",
   oct: "octaves: -1 down, 1 up, 2",
   every: "every how many bars: 2, 4, 8",
-  maybe: "the chance each bar, 0 to 1: 0.3, 0.5",
+  someCyclesBy: "the chance each bar, 0 to 1: 0.3, 0.5",
   drift: "how far it wanders, 0 to 1",
   bright: "0 dark … 1 bright",
   gain: "0 silent … 1 full",
   pan: "-1 left, 0 middle, 1 right",
-  hits: "how many hits, then over how many steps: 5 16, 3 8",
+  euclid: "how many hits, then over how many steps: 5 16, 3 8",
   run: "how many notes: 4, 8, 12",
   walk: "how many notes: 4, 8, 16",
   rand: "how many notes: 2, 4, 8",
@@ -84,7 +89,7 @@ export function generatorLine(name) {
 function buildLine(name, v) {
   const [head, ...written] = v.example.split(" > ");
   const chain = v.args[0] === "num?" ? written.map((step) => (step === name ? `${name} ${SAMPLE_AMOUNT}` : step)) : written;
-  const thread = DRUMS.has(name) ? (name === "hat" ? "hats" : name)
+  const thread = DRUMS.has(name) ? DRUM_THREADS[name] ?? name
     : BASS_SOUNDS.has(name) || head === "bass" ? "bass"
     : head === "hats" ? "hats"
     : name === "pad" || name === "stab" ? name
@@ -92,7 +97,7 @@ function buildLine(name, v) {
     : "lead";
   const pattern = HEADS[head] === MOTIF || head === "theme" ? THREAD_PATTERNS[thread] ?? MOTIF : HEADS[head] ?? head;
   const hasSound = v.group === "sound" || chain.some((step) => VERBS[step.split(" ")[0]]?.group === "sound");
-  const sound = hasSound ? [] : [DEFAULT_SOUND[thread] ?? "tri"];
+  const sound = hasSound ? [] : [DEFAULT_SOUND[thread] ?? "triangle"];
   const steps = SOUND_FIRST.has(v.group) ? [...sound, ...chain] : [...chain, ...sound];
   return `${thread}: ${[pattern, ...steps].join(" > ")}`;
 }
@@ -128,12 +133,12 @@ function hints(name, args) {
 /* ---------- a few lines for each section, with what to change in the comments ---------- */
 
 export const SECTION_EXAMPLES = {
-  stop: `def enter n = when bar <= n mute   # "enter" is your name for it: call it anything
-kick: beat fourfloor > kick
-hats: hits 7 16 > hat > enter 4     # comes in at bar 5: change 4 to bring it in later
-bass: 0 . 0 4 > low > saw > enter 8
-# lead: ${MOTIF} > tri              # a # in front: silent
-pad: chord > pad > mute             # muted: delete "> mute" to hear it`,
+  stop: `def enter n = when bar <= n hush   # "enter" is your name for it: call it anything
+kick: beat fourfloor > bd
+hats: euclid 7 16 > hh > enter 4     # comes in at bar 5: change 4 to bring it in later
+bass: 0 . 0 4 > low > sawtooth > enter 8
+# lead: ${MOTIF} > triangle              # a # in front: silent
+pad: chord > pad > hush             # muted: delete "> hush" to hear it`,
 
   settings: `style house          # or rave, funk, chill
 key a minor          # any note and mode: f# dorian, eb major …
@@ -143,27 +148,27 @@ swing 0.15           # 0 straight … 0.5 very swung
 key c minor at 17    # change key from bar 17: any bar number`,
 
   patterns: `theme = ${MOTIF}                  # "theme" is your name for it: call it anything
-lead: theme > tri
+lead: theme > triangle
 echo: theme + 2 > high > pluck           # + 2: any number of steps higher
 arp: run 8 * 3 % 7 > fast 2 > bell       # try * 2 or % 5 for another melody
-bass: for i 0..3 ((0 . 0 4) + i) > low > saw   # 0..3: four bars, a step higher each
+bass: for i 0..3 ((0 . 0 4) + i) > low > sawtooth   # 0..3: four bars, a step higher each
 stab: if bar > 8 then chord else [0,4] > stab  # 8: the bar where it changes`,
 
-  verbs: `lead: ${MOTIF} > every 4 rev > high > tri        # 4: any number of bars · rev: any verb
+  verbs: `lead: ${MOTIF} > every 4 rev > high > triangle        # 4: any number of bars · rev: any verb
 fill: ${MOTIF} > when bar % 8 == 0 (fast 2) > pluck   # every 8th bar, twice as fast
-bass: 0 . 0 4 > maybe 0.3 (up 2) > low > acid     # 0.3: the chance, 0 to 1
-hats: hits 7 16 > hat > sometimes (chop 2) > gain 0.4 > pan 0.3
+bass: 0 . 0 4 > someCyclesBy 0.3 (up 2) > low > acid     # 0.3: the chance, 0 to 1
+hats: euclid 7 16 > hh > someCycles (ply 2) > gain 0.4 > pan 0.3
 pad: chord > slow 2 > pad > bloom 0.8 > tape      # 0.8: how much bloom, 0 to 1`,
 
-  grooves: `kick: beat tamborzao > kick        # tamborzao: any groove from the table
-snare: beat backbeat > snare
-hats: beat shuffle > hat > gain 0.3
+  grooves: `kick: beat tamborzao > bd        # tamborzao: any groove from the table
+snare: beat backbeat > sd
+hats: beat shuffle > hh > gain 0.3
 stab: chord > mask (beat tresillo) > stab   # the chord, only on the groove's hits
 bass: 0 4 > mask (beat skip) > low > sub`,
 
   styles: `style funk                   # swap in rave, house or chill: tempo, drums and mix follow
 key c minor
-kick: beat tamborzao > kick
+kick: beat tamborzao > bd
 boom: 0 . . 0 . . 0 . > boom
-bell: beat batida > cowbell > gain 0.4`,
+bell: beat batida > cb > gain 0.4`,
 };

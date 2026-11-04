@@ -29,7 +29,7 @@ export function explainLine(msg) {
   const line = lines[row] ?? "";
   const trimmed = line.trim();
   const out = [];
-  if (!trimmed) return [{ text: "an empty line — start a thread with a name and a colon, like  kick: beat fourfloor > kick", role: "dim" }];
+  if (!trimmed) return [{ text: "an empty line — start a thread with a name and a colon, like  kick: beat fourfloor > bd", role: "dim" }];
   if (/^(#|\/\/)/.test(trimmed)) return [{ text: "a comment: nothing on this line plays (delete the # to bring it back)", role: "dim" }];
 
   const offset = lines.slice(0, row).reduce((n, l) => n + l.length + 1, 0);
@@ -98,9 +98,9 @@ export function reference() {
     .forEach(([k, d]) => out.push({ text: `${k.padEnd(10)} ${d}`, role: "soft" }));
   head("a line");
   out.push(
-    { text: "lead: theme > every 4 rev > high > tri", role: "ink" },
+    { text: "lead: theme > every 4 rev > high > triangle", role: "ink" },
     { text: "name: pattern, then each > changes it a little more", role: "dim" },
-    { text: "# at the start mutes a line · > mute · > solo · > when bar <= 8 mute", role: "dim" },
+    { text: "# at the start mutes a line · > hush · > solo · > when bar <= 8 hush", role: "dim" },
   );
   head("patterns");
   [["0 2 4 7", "scale steps"], [". _", "rest · hold"], ["[0 2]", "squeeze into one step"], ["[0,2,4]", "a chord"],

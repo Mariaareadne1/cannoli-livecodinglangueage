@@ -62,7 +62,7 @@ test("crowded ranges produce a warning with a fix", () => {
 });
 
 test("drums don't count as crowding", () => {
-  assert.equal(compile("lead: 0 2 4\nbeat: hits 3 8 > kick").warnings.length, 0);
+  assert.equal(compile("lead: 0 2 4\nbeat: euclid 3 8 > bd").warnings.length, 0);
 });
 
 test("swapped letters still find the verb", () => {

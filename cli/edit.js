@@ -33,7 +33,7 @@ const MESSAGE_MS = 4000;
 const UNDO_LIMIT = 200;
 const CARD_ITEMS = 7;
 const CARD_W = 46;
-const PLACEHOLDER = "start typing — e.g.  kick: beat fourfloor > kick      ctrl+s plays";
+const PLACEHOLDER = "start typing — e.g.  kick: beat fourfloor > bd      ctrl+s plays";
 // ctrl+g cycles: the two families (each pane its own tone), then single tones for every pane
 const THEME_CYCLE = [...FAMILY_NAMES, ...Object.keys(THEMES).filter((n) => !FAMILIES[n])];
 const KEYS = "ctrl+s play · ctrl+t stop · ctrl+e style · ctrl+f fix · ctrl+g theme · ctrl+z undo · ctrl+q quit";

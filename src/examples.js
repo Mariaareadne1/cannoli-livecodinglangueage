@@ -10,18 +10,18 @@ key f minor
 chords i VI III VII
 
 riff = 0 2 4 7
-def enter n = when bar <= n mute
+def enter n = when bar <= n hush
 
-kick: beat fourfloor > kick
+kick: beat fourfloor > bd
 acid: run 8 * 3 % 7 > acid > low > drift 0.2
   > when bar > 16 (fast 2)
-hats: beat offbeat > open > gain 0.5 > enter 4
-clap: beat backbeat > clap > enter 4
+hats: beat offbeat > oh > gain 0.5 > enter 4
+clap: beat backbeat > cp > enter 4
 lead: riff > fast 2 > every 4 (rev > up 2)
   > high > supersaw > ghost 0.3 > enter 8
-roll: beat rolling > hat > gain 0.3 > every 8 (fast 2) > enter 8`,
+roll: beat rolling > hh > gain 0.3 > every 8 (fast 2) > enter 8`,
     explain: [
-      ["def enter n = when bar <= n mute", "a function you made: the thread stays silent until bar n, so the song builds"],
+      ["def enter n = when bar <= n hush", "a function you made: the thread stays silent until bar n, so the song builds"],
       ["acid: run 8 * 3 % 7", "the acid line is arithmetic: count 0–7, multiply by 3, wrap at 7 → 0 3 6 2 5 1 4 0"],
       ["> drift 0.2", "a few notes wander each bar, so the acid line never repeats exactly"],
       ["> when bar > 16 (fast 2)", "after bar 16 the acid doubles in speed: the drop"],
@@ -37,23 +37,23 @@ style funk
 key c minor
 chords i i iv iv
 
-def enter n = when bar <= n mute
+def enter n = when bar <= n hush
 
-kick: beat tamborzao > kick
+kick: beat tamborzao > bd
 boom: 0 . . 0 . . 0 . . . 3 . . 0 . . > boom
   > every 4 (up 2)
-bell: beat batida > cowbell > gain 0.4 > enter 2
-snare: beat backbeat > snare > every 2 (chop 2) > enter 2
+bell: beat batida > cb > gain 0.4 > enter 2
+snare: beat backbeat > sd > every 2 (ply 2) > enter 2
 stab: chord > mask (beat tresillo) > stab > high > gain 0.5 > enter 4
 vox: 4 . 4 2 . 0 . . > square > high > short > enter 8
-  > maybe 0.5 rev`,
+  > someCyclesBy 0.5 rev`,
     explain: [
       ["kick: beat tamborzao", "the tamborzão: baile funk's signature 3-3-4-3-3 kick pattern"],
       ["boom: 0 . . 0 …", "a pitched 808: the dots are rests, the numbers are notes in C minor"],
       ["> every 4 (up 2)", "every 4th bar the 808 line jumps up a third"],
-      ["> every 2 (chop 2)", "every other bar each snare becomes a quick double hit"],
+      ["> every 2 (ply 2)", "every other bar each snare becomes a quick double hit"],
       ["chord > mask (beat tresillo)", "the chord is cut into stabs on the 3-3-2 tresillo rhythm"],
-      ["> maybe 0.5 rev", "the vocal-chop line flips backwards in about half the bars"],
+      ["> someCyclesBy 0.5 rev", "the vocal-chop line flips backwards in about half the bars"],
     ],
   },
   {
@@ -65,22 +65,22 @@ key a minor
 chords ii V I vi
 
 hook = 4 _ 2 . 0 _ . .
-def enter n = when bar <= n mute
+def enter n = when bar <= n hush
 
-kick: beat fourfloor > kick
-hats: beat shuffle > hat > gain 0.4 > enter 2
+kick: beat fourfloor > bd
+hats: beat shuffle > hh > gain 0.4 > enter 2
 bass: beat offbeat > sub > enter 2
 stabs: chord > mask (beat skip) > stab > bloom 0.3 > enter 4
 lead: hook > every 2 (up 2) > high > pluck > ghost > enter 8
   > when bar % 16 == 0 (fast 2)
-shaker: hits 16 16 > shaker > gain 0.25 > enter 8`,
+shaker: euclid 16 16 > sh > gain 0.25 > enter 8`,
     explain: [
       ["chords ii V I vi", "a deep-house progression; every thread follows it automatically"],
       ["bass: beat offbeat > sub", "the bass bounces between the kicks: the classic house push"],
       ["chord > mask (beat skip)", "the chords become syncopated stabs"],
       ["hook = 4 _ 2 . 0 _ . .", "a variable: _ holds the note before, . is a rest"],
       ["> when bar % 16 == 0 (fast 2)", "every 16th bar the hook doubles up, a fill before the next section"],
-      ["hits 16 16", "16 hits in 16 steps: a shaker on every sixteenth"],
+      ["euclid 16 16", "16 hits in 16 steps: a shaker on every sixteenth"],
     ],
   },
   {
@@ -95,18 +95,18 @@ theme = 0 2 4 6 4 2
 
 keys: chord > slow 2 > pad > bloom > tape 0.4
 melody: theme > rot bar % 3 > slow 2 > high > bell > ghost 0.5
-  > maybe 0.4 rev
+  > someCyclesBy 0.4 rev
 bass: 0 _ . 4 > sub
-kick: beat boombap > kick
-snare: beat backbeat > snare > gain 0.6
-hats: hits 6 8 > hat > gain 0.3 > sometimes (chop 2)`,
+kick: beat boombap > bd
+snare: beat backbeat > sd > gain 0.6
+hats: euclid 6 8 > hh > gain 0.3 > someCycles (ply 2)`,
     explain: [
       ["style chill", "80 bpm, swung, soft drums and a warm lo-fi mix"],
       ["chord > slow 2 > pad", "each chord is held for two bars"],
       ["> bloom > tape 0.4", "a reverb that rings in key, plus warmth and wobble"],
       ["rot bar % 3", "the melody's starting note shifts with the bar number: 1, 2, 0, 1, 2 …"],
       ["> ghost 0.5", "echoes that climb up through the current chord"],
-      ["> sometimes (chop 2)", "in about half the bars the hats double up"],
+      ["> someCycles (ply 2)", "in about half the bars the hats double up"],
     ],
   },
   {
@@ -123,12 +123,12 @@ def lift n = up n > fast 2
 lead: theme
   > every 4 rev
   > when bar > 8 (lift 2)
-  > high > tri > ghost
+  > high > triangle > ghost
 
-bass: 0 . 0 [. 0] > low > saw > pump
+bass: 0 . 0 [. 0] > low > sawtooth > pump
 pad: chord > slow 2 > pad > bloom > gain 0.5
-kick: hits 4 16 > kick
-hats: hits 7 16 > hat > gain 0.35 > maybe 0.3 (fast 2)`,
+kick: euclid 4 16 > bd
+hats: euclid 7 16 > hh > gain 0.35 > someCyclesBy 0.3 (fast 2)`,
   },
   {
     name: "counting machine",
@@ -138,9 +138,9 @@ tempo 112
 chords i iv v i
 
 notes: run 16 * 3 % 9 > penta > high > pluck > ghost 0.4
-bass: for i 0..3 (0 + i * 2) > low > saw
-kick: hits 3 8 > kick
-clap: . 0 . 0 > clap > gain 0.5`,
+bass: for i 0..3 (0 + i * 2) > low > sawtooth
+kick: euclid 3 8 > bd
+clap: . 0 . 0 > cp > gain 0.5`,
   },
   {
     name: "fractal",
@@ -152,7 +152,7 @@ seed = 0 2 4
 fractal: seed > grow > high > bell > bloom
   > every 2 flip
 drone: 0 > slow 4 > low > pad > tape
-pulse: hits 5 16 > rim > gain 0.5`,
+pulse: euclid 5 16 > rim > gain 0.5`,
   },
   {
     name: "drift garden",
@@ -162,9 +162,9 @@ tempo 72
 
 melody = 0 4 2 6 _ 4
 lead: melody > drift 0.25 > high > sine > bloom > tape 0.3
-shadow: melody > rot 2 > slow 2 > tri > ghost > gain 0.4
-bass: 0 _ _ 4 > low > tri
-air: hits 3 8 > open > gain 0.25`,
+shadow: melody > rot 2 > slow 2 > triangle > ghost > gain 0.4
+bass: 0 _ _ 4 > low > triangle
+air: euclid 3 8 > oh > gain 0.25`,
   },
   {
     name: "conditions",
@@ -177,8 +177,8 @@ riff = 0 2 3 4
 lead: if bar % 4 == 0 then riff * 2 else riff
   > every 2 (rot 1)
   > square > bright 0.4
-bass: 0 x 3 then 4 > low > saw > pump 0.4
-beat: hits 4 16 > kick
-snare: . 0 . 0 > snare`,
+bass: 0 x 3 then 4 > low > sawtooth > pump 0.4
+beat: euclid 4 16 > bd
+snare: . 0 . 0 > sd`,
   },
 ];

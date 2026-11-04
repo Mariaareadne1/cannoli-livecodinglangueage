@@ -18,12 +18,12 @@ test("a style sets the default tempo and swing", () => {
 });
 
 test("a style picks the drum kit", () => {
-  const [kick] = renderBar(ok("style funk\nk: 0 > kick"), 0);
+  const [kick] = renderBar(ok("style funk\nk: 0 > bd"), 0);
   assert.equal(kick.props.kit, "funk");
 });
 
 test("beat plays a named groove", () => {
-  const p = ok("k: beat tamborzao > kick");
+  const p = ok("k: beat tamborzao > bd");
   const starts = renderBar(p, 0).map((n) => n.start * 16);
   assert.deepEqual(starts, [0, 3, 6, 10, 13]);
 });
@@ -31,7 +31,7 @@ test("beat plays a named groove", () => {
 test("unknown styles and grooves suggest the nearest", () => {
   const [style] = compile("style raev\na: 0").errors;
   assert.equal(style.fix.text, "rave");
-  const [groove] = compile("k: beat fourflor > kick").errors;
+  const [groove] = compile("k: beat fourflor > bd").errors;
   assert.equal(groove.fix.text, "fourfloor");
 });
 
@@ -66,7 +66,7 @@ test("with a style, chords suggests that style's progressions", () => {
 });
 
 test("threads may share a name with a sound or generator", () => {
-  ok("beat: hits 4 16 > kick\nboom: 0 > boom\nacid: 0 > acid");
+  ok("beat: euclid 4 16 > bd\nboom: 0 > boom\nacid: 0 > acid");
   assert.match(compile("beat = 0 2").errors[0].message, /already means/);
 });
 

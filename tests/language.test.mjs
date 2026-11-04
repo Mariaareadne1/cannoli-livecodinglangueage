@@ -33,7 +33,7 @@ test("rests, holds, groups, chords and repeats", () => {
 });
 
 test("generators: hits, run, chord", () => {
-  assert.deepEqual(starts("a: hits 3 8"), [0, 3 / 8, 6 / 8]);
+  assert.deepEqual(starts("a: euclid 3 8"), [0, 3 / 8, 6 / 8]);
   assert.deepEqual(steps("a: run 4"), [0, 1, 2, 3]);
   assert.deepEqual(steps("a: chord"), [[0, 2, 4]]);
 });
@@ -92,7 +92,7 @@ test("verbs reshape structure", () => {
   assert.deepEqual(steps("a: 0 1 > mirror"), [0, 1, 1, 0]);
   assert.deepEqual(steps("a: 0 2 > grow"), [0, 2, 2, 4]);
   assert.deepEqual(steps("a: 0 1 > fast 2"), [0, 1, 0, 1]);
-  assert.deepEqual(steps("a: 0 1 > chop 2"), [0, 0, 1, 1]);
+  assert.deepEqual(steps("a: 0 1 > ply 2"), [0, 0, 1, 1]);
   assert.deepEqual(steps("a: 0 2 > flip"), [0, -2]);
   assert.deepEqual(steps("a: [0,2,4] > arp"), [0, 2, 4]);
   assert.deepEqual(starts("a: 0 1 2 3 > slow 2", 1), [0, 0.5]);
@@ -141,7 +141,7 @@ test("chords are voiced close together", () => {
 });
 
 test("drums ignore pitch; ghost adds climbing echoes", () => {
-  const p = program("a: hits 2 4 > kick\nb: 0 > ghost");
+  const p = program("a: euclid 2 4 > bd\nb: 0 > ghost");
   const notes = renderBar(p, 0);
   assert.equal(notes.filter((n) => n.drum === "kick").length, 2);
   assert.equal(notes.filter((n) => n.echo).length, 3);
@@ -154,7 +154,7 @@ test("key changes and chord lines apply from a bar", () => {
 });
 
 test("mute silences a thread, also only in some bars", () => {
-  const p = program("a: 0 > mute\nb: 2 > when bar <= 2 mute");
+  const p = program("a: 0 > hush\nb: 2 > when bar <= 2 hush");
   assert.equal(renderBar(p, 0).length, 0);
   assert.deepEqual(renderBar(p, 2).map((n) => n.thread), ["b"]);
 });

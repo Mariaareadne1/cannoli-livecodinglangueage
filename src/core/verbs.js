@@ -4,6 +4,10 @@
    its own (a generator). Each entry documents itself: the
    editor's suggestion cards read `doc` and `example` from here.
 
+   Where a verb does the same thing as a Strudel function it has
+   the same name. The older cannoli names still work, but they
+   stay out of the menus (see OLD_NAMES at the bottom).
+
    Argument kinds:  num  a number (may use bar, loop counters …)
                     num? an optional number
                     step a verb, or (verb > verb …)
@@ -24,6 +28,9 @@ const SOUND_DOCS = {
   sub: "a deep, clean sub bass",
   boom: "a pitched 808 boom that slides down into the note",
 };
+// what each sound is called in the language, where that differs from its id in the synths
+const SOUND_WORDS = { saw: "sawtooth", tri: "triangle", kick: "bd", snare: "sd", hat: "hh", open: "oh", clap: "cp", tom: "mt", cowbell: "cb", shaker: "sh" };
+const DRUM_DOCS = { kick: "a kick (bass drum)", snare: "a snare", hat: "a closed hi-hat", open: "an open hi-hat", clap: "a clap", rim: "a rimshot", tom: "a tom", cowbell: "a cowbell", shaker: "a shaker" };
 const EFFECT_DEFAULT = { bloom: 0.5, ghost: 0.5, tape: 0.5, pump: 0.6, air: 0.4 };
 
 /** @type {Record<string, { group: string, args: string[], doc: string, example: string, apply: Function }>} */
@@ -49,15 +56,19 @@ export const VERBS = {
   /* time */
   fast: verb("time", ["num"], "n times as fast: more notes in the bar", "theme > fast 2", (p, [n]) => fast(p, n)),
   slow: verb("time", ["num"], "n times as slow: the pattern stretches over n bars", "chord > slow 2", (p, [n]) => slow(p, n)),
-  chop: verb("time", ["num"], "repeats every note n times inside its own length", "theme > chop 3", (p, [n]) =>
+  ply: verb("time", ["num"], "repeats every note n times inside its own length", "theme > ply 3", (p, [n]) =>
     mapEvents(p, (events, c, ctx) => {
       const k = Math.max(1, Math.round(n(ctx)));
       return events.flatMap((e) => Array.from({ length: k }, (_, i) => ({ ...e, start: e.start + (i * e.dur) / k, dur: e.dur / k })));
     })),
-  long: verb("time", [], "lets each note ring twice as long", "pad > long", (p) => scaleLength(p, 2)),
-  short: verb("time", [], "makes each note short and detached", "theme > short", (p) => scaleLength(p, 0.4)),
+  clip: verb("time", ["num"], "multiplies how long each note rings: 2 is twice as long, 0.5 half", "theme > clip 0.5", (p, [n]) =>
+    mapEvents(p, (events, c, ctx) => events.map((e) => ({ ...e, props: { ...e.props, len: (e.props.len ?? 1) * n(ctx) } })))),
+  long: verb("time", [], "lets each note ring twice as long (the same as clip 2)", "pad > long", (p) => scaleLength(p, 2)),
+  short: verb("time", [], "makes each note short and detached (the same as clip 0.4)", "theme > short", (p) => scaleLength(p, 0.4)),
 
   /* pitch */
+  scaleTranspose: verb("pitch", ["num"], "moves every note n steps through the scale, up or down (stays in key)", "theme > scaleTranspose 2", (p, [n]) =>
+    mapNotes(p, (note, ctx) => ({ ...note, deg: note.deg + Math.round(n(ctx)) }))),
   up: verb("pitch", ["num"], "moves every note n steps up the scale (stays in key)", "theme > up 2", (p, [n]) =>
     mapNotes(p, (note, ctx) => ({ ...note, deg: note.deg + Math.round(n(ctx)) }))),
   down: verb("pitch", ["num"], "moves every note n steps down the scale", "theme > down 3", (p, [n]) =>
@@ -98,13 +109,17 @@ export const VERBS = {
     }, p.len)),
 
   /* change over time */
+  firstOf: verb("change", ["num", "step"], "applies a verb on the first bar of every n (bar 1, n+1, 2n+1 …)", "theme > firstOf 4 rev", (p, [n, step]) =>
+    when(p, (ctx) => mod(ctx.bar, Math.max(1, Math.round(n(ctx)))) === 0, step)),
+  lastOf: verb("change", ["num", "step"], "applies a verb on the last bar of every n (bar n, 2n, 3n …)", "theme > lastOf 4 rev", (p, [n, step]) =>
+    when(p, (ctx) => mod(ctx.bar + 1, Math.max(1, Math.round(n(ctx)))) === 0, step)),
   every: verb("change", ["num", "step"], "applies a verb every nth bar (bar n, 2n, 3n …)", "theme > every 4 rev", (p, [n, step]) =>
     when(p, (ctx) => mod(ctx.bar + 1, Math.max(1, Math.round(n(ctx)))) === 0, step)),
-  maybe: verb("change", ["num", "step"], "applies a verb in a random share of bars (0–1)", "theme > maybe 0.3 shuffle", (p, [n, step], seed) =>
+  someCyclesBy: verb("change", ["num", "step"], "applies a verb in a random share of bars (0–1)", "theme > someCyclesBy 0.3 shuffle", (p, [n, step], seed) =>
     when(p, (ctx) => rand(ctx.bar, seed) < n(ctx), step)),
   when: verb("change", ["cond", "step", "else?"], "applies a verb in bars where a condition is true (else: another verb)", "theme > when bar > 8 (fast 2)", (p, [test, step, other]) =>
     when(p, test, step, other ?? undefined)),
-  sometimes: verb("change", ["step"], "applies a verb in about half the bars", "theme > sometimes (fast 2)", (p, [step], seed) =>
+  someCycles: verb("change", ["step"], "applies a verb in about half the bars", "theme > someCycles (fast 2)", (p, [step], seed) =>
     when(p, (ctx) => rand(ctx.bar, seed) < 0.5, step)),
   drift: verb("change", ["num"], "nudges some notes up or down each bar, so the line keeps evolving (0–1)", "theme > drift 0.3", (p, [n], seed) =>
     mapNotes(p, (note, ctx, i) => {
@@ -114,7 +129,7 @@ export const VERBS = {
     })),
 
   /* mixing a performance */
-  mute: verb("mix", [], "silences the thread (try it with when: > when bar <= 8 mute)", "lead > mute", (p) =>
+  hush: verb("mix", [], "silences the thread (try it with when: > when bar <= 8 hush)", "lead > hush", (p) =>
     mapEvents(p, () => [])),
   solo: verb("mix", [], "only soloed threads play, so you can hear one on its own", "bass > solo", (p) =>
     setProps(p, { solo: true })),
@@ -134,8 +149,9 @@ export const VERBS = {
 
 for (const name of [...SOUNDS, ...DRUMS]) {
   const isDrum = DRUMS.includes(name);
-  VERBS[name] = verb("sound", [], isDrum ? `plays a ${name} on every note` : SOUND_DOCS[name] ?? `plays the notes with the ${name} sound`,
-    isDrum ? `hits 4 16 > ${name}` : `theme > ${name}`, (p) => setProps(p, { sound: name }));
+  const word = SOUND_WORDS[name] ?? name;
+  VERBS[word] = verb("sound", [], isDrum ? `plays ${DRUM_DOCS[name]} on every note` : SOUND_DOCS[name] ?? `plays the notes with the ${word} sound`,
+    isDrum ? `euclid 4 16 > ${word}` : `theme > ${word}`, (p) => setProps(p, { sound: name }));
 }
 
 const EFFECT_DOCS = {
@@ -154,7 +170,9 @@ for (const [name, doc] of Object.entries(EFFECT_DOCS)) {
 
 /** @type {Record<string, { args: string[], doc: string, example: string, make: Function }>} */
 export const GENERATORS = {
-  hits: gen(["num", "num"], "k hits spread as evenly as possible over n steps (a Euclidean rhythm)", "hits 3 8 > kick", ([k, n], src) =>
+  euclid: gen(["num", "num"], "k hits spread as evenly as possible over n steps (a Euclidean rhythm)", "euclid 3 8 > bd", ([k, n], src) =>
+    perCycle((ctx) => euclidSteps(Math.round(k(ctx)), Math.max(1, Math.round(n(ctx)))).map((on) => (on ? note(0, src) : silence)))),
+  hits: gen(["num", "num"], "k hits spread evenly over n steps (the older spelling of euclid: a rotation of it)", "hits 3 8 > bd", ([k, n], src) =>
     perCycle((ctx) => {
       const steps = Math.max(1, Math.round(n(ctx)));
       const count = Math.max(0, Math.min(steps, Math.round(k(ctx))));
@@ -173,7 +191,7 @@ export const GENERATORS = {
   rand: gen(["num"], "n random notes from the key, new every bar", "rand 4 > slow 2", ([n], src, seed) =>
     perCycle((ctx) => Array.from({ length: Math.max(1, Math.round(n(ctx))) }, (_, i) =>
       note(Math.floor(rand(ctx.bar, i, seed, 3) * 8), src)))),
-  beat: gen(["word"], `a named groove: ${Object.keys(BEATS).join(", ")}`, "beat tamborzao > kick", ([name], src) => {
+  beat: gen(["word"], `a named groove: ${Object.keys(BEATS).join(", ")}`, "beat tamborzao > bd", ([name], src) => {
     const steps = BEATS[name].steps;
     return sequence([...steps].map((c) => ({ pattern: c === "x" ? note(0, src) : silence, weight: 1 })));
   }),
@@ -182,6 +200,22 @@ export const GENERATORS = {
 };
 
 /* ---------- helpers ---------- */
+
+/* Bjorklund's algorithm, built the way Strudel's is: euclid 3 8 is x..x..x. and euclid 5 8 is x.xx.xx. */
+export function euclidSteps(hits, steps) {
+  const ons = Math.max(0, Math.min(steps, hits));
+  if (ons === 0) return Array(steps).fill(false);
+  let front = Array.from({ length: ons }, () => [true]);
+  let back = Array.from({ length: steps - ons }, () => [false]);
+  while (Math.min(front.length, back.length) > 1) {
+    const pairs = Math.min(front.length, back.length);
+    const merged = front.slice(0, pairs).map((g, i) => [...g, ...back[i]]);
+    const rest = front.length > back.length ? front.slice(pairs) : back.slice(pairs);
+    front = merged;
+    back = rest;
+  }
+  return [...front, ...back].flat();
+}
 
 function verb(group, args, doc, example, apply) {
   return { group, args, doc, example, apply };
@@ -206,4 +240,15 @@ function scaleLength(p, factor) {
 
 export const SOUND_NAMES = SOUNDS;
 export const DRUM_NAMES = DRUMS;
+// every way to write a drum in code: the Strudel names and the older ones
+export const DRUM_WORDS = [...DRUMS, ...DRUMS.map((name) => SOUND_WORDS[name] ?? name)];
 export const VERB_GROUPS = ["order", "time", "pitch", "structure", "change", "mix", "range", "harmony", "sound", "color", "effect"];
+
+/* The older cannoli names. They still compile, but they aren't enumerable, so menus and the manual skip them. */
+export const OLD_NAMES = {
+  chop: "ply", mute: "hush", maybe: "someCyclesBy", sometimes: "someCycles",
+  saw: "sawtooth", tri: "triangle", kick: "bd", snare: "sd", hat: "hh", open: "oh", clap: "cp", tom: "mt", cowbell: "cb", shaker: "sh",
+};
+for (const [old, word] of Object.entries(OLD_NAMES)) Object.defineProperty(VERBS, old, { value: VERBS[word], enumerable: false });
+Object.defineProperty(VERBS, "legato", { value: VERBS.clip, enumerable: false });
+Object.defineProperty(GENERATORS, "hits", { value: GENERATORS.hits, enumerable: false });

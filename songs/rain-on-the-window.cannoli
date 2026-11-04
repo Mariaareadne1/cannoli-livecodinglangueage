@@ -7,8 +7,8 @@ theme = 0 2 4 6 4 2
 
 keys: chord > slow 2 > pad > bloom > tape 0.4
 melody: theme > rot bar % 3 > slow 2 > high > bell > ghost 0.5
-  > maybe 0.4 rev
+  > someCyclesBy 0.4 rev
 bass: 0 _ . 4 > sub
-kick: beat boombap > kick
-snare: beat backbeat > snare > gain 0.6
-hats: hits 6 8 > hat > gain 0.3 > sometimes (chop 2)
+kick: beat boombap > bd
+snare: beat backbeat > sd > gain 0.6
+hats: euclid 6 8 > hh > gain 0.3 > someCycles (ply 2)

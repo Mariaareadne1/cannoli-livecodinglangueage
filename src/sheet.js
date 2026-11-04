@@ -11,6 +11,8 @@ import { EXAMPLES } from "./examples.js";
 import { highlight } from "./editor/highlight.js";
 import { lexLine } from "./lang/lexer.js";
 import { verbLine, generatorLine, SECTION_EXAMPLES } from "./sheet-examples.js";
+import { SAME_NAMES, SAME_NAME_DIFFERENT, CANNOLI_ONLY, WRITTEN_DIFFERENTLY } from "./strudel-names.js";
+import { OLD_NAMES } from "./core/verbs.js";
 import { compile } from "./lang/compile.js";
 import { codeLink } from "./share.js";
 import { applyTheme, savedTheme } from "./apply-theme.js";
@@ -91,11 +93,11 @@ function lineAnatomy() {
     ["theme", "a pattern: here a variable, or numbers like 0 2 4 (steps in the key)"],
     ["> every 4 rev", "> hands the music to a verb. This one plays it backwards every 4th bar"],
     ["> high", "puts it in the high range so it doesn't crowd the others"],
-    ["> tri", "the sound"],
+    ["> triangle", "the sound"],
   ];
   return `
     <div class="sh-anatomy">
-      ${code("lead: theme > every 4 rev > high > tri")}
+      ${code("lead: theme > every 4 rev > high > triangle")}
       <ol>${parts.map(([p, d]) => `<li>${inline(p)} <span>${esc(d)}</span></li>`).join("")}</ol>
     </div>
     <p>Read a line left to right: start with a pattern, then each <code>&gt;</code> changes it a little more.
@@ -104,16 +106,16 @@ function lineAnatomy() {
     <p>Because every thread shares the key and the chords, numbers are scale steps, not exact notes:
     <code>0</code> is the root, <code>7</code> is an octave up. Notes on the beat snap to the current chord, so
     threads always fit together.</p>
-    ${code("key d minor\ntempo 96\nchords i VI III VII\n\ntheme = 0 2 4 _ 6 4 . 2   # a variable: doesn't play on its own\ndef lift n = up n > fast 2  # your own verb\n\nlead: theme > every 4 rev > high > tri\nbass: 0 . 0 4 > low > saw\n  > every 2 (lift 1)           # lines starting with > continue the thread")}`;
+    ${code("key d minor\ntempo 96\nchords i VI III VII\n\ntheme = 0 2 4 _ 6 4 . 2   # a variable: doesn't play on its own\ndef lift n = up n > fast 2  # your own verb\n\nlead: theme > every 4 rev > high > triangle\nbass: 0 . 0 4 > low > sawtooth\n  > every 2 (lift 1)           # lines starting with > continue the thread")}`;
 }
 
 function stopping() {
   return table(["do this", "what happens"], [
-    [inline("# lead: theme > tri"), "a # in front comments the line out: it stops at the next bar after you press play"],
-    [inline("lead: theme > mute"), "mute silences the thread but keeps your code"],
+    [inline("# lead: theme > triangle"), "a # in front comments the line out: it stops at the next bar after you press play"],
+    [inline("lead: theme > hush"), "hush silences the thread but keeps your code"],
     [inline("bass: 0 4 > solo"), "only soloed threads play, to hear one on its own"],
-    [inline("> when bar <= 8 mute"), "silent until bar 9: how songs build up"],
-    [inline("def enter n = when bar <= n mute"), "make it a function, then write > enter 8 on any thread"],
+    [inline("> when bar <= 8 hush"), "silent until bar 9: how songs build up"],
+    [inline("def enter n = when bar <= n hush"), "make it a function, then write > enter 8 on any thread"],
     ["<kbd>ctrl</kbd>+<kbd>.</kbd>", "stops everything at the end of the bar (add shift to stop now)"],
     ["<kbd>ctrl</kbd>+<kbd>↵</kbd>", "plays, or applies your changes on the next bar line"],
   ]);
@@ -170,6 +172,30 @@ function verbs() {
     ]))}`;
 }
 
+function strudel() {
+  const names = (list) => list.map((n) => inline(n)).join(" ");
+  const nearest = (html) => html || "<span class=\"sh-none\">nothing direct</span>";
+  return `
+    <h3>the same name, doing the same thing</h3>
+    <p class="sh-names">${names(SAME_NAMES)}</p>
+    <h3>the same name, but different: watch these</h3>
+    ${table(["word", "how it differs", "to match strudel"], SAME_NAME_DIFFERENT.map(([word, how, match]) => [`<strong class="sh-name">${word}</strong>`, how, match]))}
+    <h3>only in cannoli</h3>
+    ${table(["word", "what it does", "nearest in strudel"], CANNOLI_ONLY.map(([word, what, near]) => [`<strong class="sh-name">${word}</strong>`, what, nearest(near)]))}
+    <h3>written differently</h3>
+    ${table(["cannoli", "strudel", ""], WRITTEN_DIFFERENTLY)}
+    <h3>older cannoli names</h3>
+    <p>These were renamed to match Strudel. The old spellings still work, so older songs keep playing.</p>
+    ${table(["old", "now"], [...Object.entries(OLD_NAMES), ["hits", "euclid (a rotation of it, so the rhythm can start in a different place)"]].map(([old, now]) => [inline(old), now.includes(" ") ? esc(now) : inline(now)]))}`;
+}
+
+function grids() {
+  return table(["type this", "you get", "it writes"], [
+    [inline("kick: "), "a row of steps split into beats. Also for snare, hats, clap, drums and any thread playing a drum.", inline("kick: 0 . . 0 . . 0 . > bd")],
+    [inline("lead: 0 2 4 > every "), "16 bars in fours: click the ones you want. Also for firstOf, lastOf and when bar % 4 == 1.", inline("lead: 0 2 4 > every 4 rev")],
+  ]) + `<p>The code on your line updates with every click, and clicking a line you've already written shows what it plays. It writes the simplest code it can: a named groove when the steps match one, and <code>every</code> or <code>firstOf</code> when the bars are regular. Press <kbd>esc</kbd> to close a grid, or <kbd>ctrl</kbd>+<kbd>b</kbd> to use it from the keyboard.</p>`;
+}
+
 function grooves() {
   const rows = Object.entries(BEATS).map(([name, b]) => [
     `<strong class="sh-name">${name}</strong>`,
@@ -212,6 +238,8 @@ document.getElementById("sheet").innerHTML = [
     + "Every example below is a whole line: copy it into the editor as it is. <span class=\"sh-tweak-key\">Underlined</span> parts are yours to change; the note under the line says what they mean."),
   section("grooves", "grooves", grooves(), "Named 16-step rhythms for <code>beat name</code>. Each lit square is a hit; the brighter edge marks each beat."),
   section("styles", "styles", styles() + examples("styles"), "One line at the top sets the feel. A tempo line still wins over the style's tempo."),
+  section("strudel", "coming from strudel", strudel(), "cannoli uses Strudel's name wherever a word does the same thing. Everything that differs is listed here."),
+  section("grids", "click to write code", grids(), "Some lines open a small grid underneath, so you can pick with the mouse instead of typing."),
   section("songs", "songs to learn from", songs(), "Each one builds over time. Open it, press ctrl+enter, and watch which lines light up."),
 ].join("");
 
