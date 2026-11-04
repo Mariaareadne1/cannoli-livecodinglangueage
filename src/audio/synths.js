@@ -9,7 +9,9 @@
    ended, the note disconnects that graph: some Web Audio
    engines (the terminal's) keep computing finished nodes until
    the garbage collector frees them, and that builds up into
-   crackles.
+   crackles. Saw, square and triangle are built from their
+   harmonics: the terminal engine's own versions alias, which
+   sounds scratchy, and browsers make theirs the same way.
    ============================================================ */
 
 const NOTE_LEVEL = 0.22;
@@ -35,6 +37,17 @@ const FILTER_SWEEP = { pluck: [2.5, 0.08, 0.7], acid: [5, 0.12, 14], stab: [3, 0
 
 const noiseCache = new WeakMap();
 const RAW = Symbol("the real AudioContext");
+const waveCache = new WeakMap();
+const HIGHEST_HARMONIC_HZ = 20000;
+const WIDEST_DETUNE = 1.02;      // room for detuned stacks, whose top voice runs a little sharp
+const DUCK_DIP_S = 0.004;        // fast enough to feel like a pump, slow enough not to click
+const DUCK_RECOVER_S = 0.18;
+// each waveform's strength at harmonic n
+const HARMONICS = {
+  sawtooth: (n) => (2 / (Math.PI * n)) * (n % 2 ? 1 : -1),
+  square: (n) => (n % 2 ? 4 / (Math.PI * n) : 0),
+  triangle: (n) => (n % 2 ? (8 / (Math.PI * Math.PI * n * n)) * (n % 4 === 1 ? 1 : -1) : 0),
+};
 
 /**
  * @param {AudioContext} ctx
@@ -62,15 +75,17 @@ function buildNote(ctx, buses, note) {
   const level = (NOTE_LEVEL * clamp(props.gain, 0, 1.5)) / Math.sqrt(note.midi.length);
 
   // pump (and automatic ducking of the bass under the kick)
-  const pumpTimes = (props.pump > 0 ? note.beatTimes : props.range === "low" ? note.duckTimes : [])
-    .filter((t) => t >= note.time - 0.01 && t < end + env.r);
+  const pumpTimes = spacedOut((props.pump > 0 ? note.beatTimes : props.range === "low" ? note.duckTimes : [])
+    .filter((t) => t >= note.time - 0.01 && t < end + env.r)
+    .map((t) => Math.max(note.time, t)));
   const depth = props.pump > 0 ? props.pump * 0.8 : 0.35;
   let duck = out;
   if (pumpTimes.length) {
     duck = ctx.createGain();
     pumpTimes.forEach((t) => {
-      duck.gain.setValueAtTime(1 - depth, Math.max(note.time, t));
-      duck.gain.linearRampToValueAtTime(1, Math.max(note.time, t) + 0.18);
+      duck.gain.setValueAtTime(1, t);
+      duck.gain.linearRampToValueAtTime(1 - depth, t + DUCK_DIP_S);
+      duck.gain.linearRampToValueAtTime(1, t + DUCK_RECOVER_S);
     });
     duck.connect(out);
   }
@@ -103,6 +118,11 @@ function buildNote(ctx, buses, note) {
   if (props.air > 0) addAir(ctx, amp, props.air, note.time, stopAt);
 }
 
+/* Dips that would start before the last one has recovered are dropped: restarting one would click. */
+function spacedOut(times) {
+  return times.reduce((kept, t) => (kept.length && t - kept.at(-1) < DUCK_RECOVER_S ? kept : [...kept, t]), []);
+}
+
 /* Where a note's sound leaves: a panner only when it's off centre, and a bloom send when asked for. */
 function noteOutput(ctx, buses, props, bus) {
   const panAt = clamp(props.pan, -1, 1);
@@ -132,7 +152,7 @@ function tracking(ctx) {
       if (prop === RAW) return target;
       const value = Reflect.get(target, prop, target);
       if (typeof value !== "function") return value;
-      if (typeof prop === "string" && prop.startsWith("create") && prop !== "createBuffer") {
+      if (typeof prop === "string" && prop.startsWith("create") && prop !== "createBuffer" && prop !== "createPeriodicWave") {
         return (...args) => {
           const node = value.apply(target, args);
           made.push(node);
@@ -201,21 +221,39 @@ function detuned(ctx, dest, type, freq, t, stop, cents, gain) {
   g.gain.value = gain;
   g.connect(dest);
   return cents.map((c) => {
-    const o = ctx.createOscillator();
-    o.type = type;
-    o.frequency.value = freq;
-    o.detune.value = c;
+    const o = oscillator(ctx, type, freq, c);
     o.connect(g);
     startStop([o], t, stop);
     return o;
   });
 }
 
-function osc(ctx, dest, type, freq, t, stop, cents, gain) {
+function oscillator(ctx, type, freq, cents) {
   const o = ctx.createOscillator();
-  o.type = type;
+  if (HARMONICS[type]) o.setPeriodicWave(harmonicWave(ctx, type, freq));
+  else o.type = type;
   o.frequency.value = freq;
   o.detune.value = cents;
+  return o;
+}
+
+/* The waveform with only the harmonics this note can hold, shared by every note that needs the same. */
+function harmonicWave(view, type, freq) {
+  const ctx = view[RAW] ?? view;
+  const count = Math.max(1, Math.floor(HIGHEST_HARMONIC_HZ / (freq * WIDEST_DETUNE)));
+  const waves = waveCache.get(ctx) ?? new Map();
+  waveCache.set(ctx, waves);
+  const key = `${type}:${count}`;
+  if (!waves.has(key)) {
+    const imag = new Float32Array(count + 1);
+    for (let n = 1; n <= count; n++) imag[n] = HARMONICS[type](n);
+    waves.set(key, ctx.createPeriodicWave(new Float32Array(count + 1), imag, { disableNormalization: true }));
+  }
+  return waves.get(key);
+}
+
+function osc(ctx, dest, type, freq, t, stop, cents, gain) {
+  const o = oscillator(ctx, type, freq, cents);
   if (gain === 1) {
     o.connect(dest);
   } else {
