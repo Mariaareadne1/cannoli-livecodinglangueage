@@ -3,15 +3,20 @@
    A textarea over a coloured <pre>. Adds:
      · a suggestion card while typing (Tab / Enter to accept,
        Shift+Tab to write out the whole line it shows)
+     · a grid under drum threads and every/firstOf/lastOf: click
+       the beats or bars you want and it writes the code
      · hover on an underlined problem → what's wrong + a Fix button
      · one-click fixes that stay on the undo stack
    ============================================================ */
 
 import { highlight } from "./highlight.js";
 import { complete } from "./complete.js";
+import { pickerAt, applyBeat, applyBars } from "./pickers.js";
 
 const PAD_X = 16;
 const PAD_Y = 14;
+
+const PICKER_BARS_PER_GROUP = 4;
 
 /**
  * @param {HTMLElement} root
@@ -29,6 +34,7 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
       </div>
     </div>
     <div class="ed-card" role="listbox" hidden></div>
+    <div class="ed-picker" hidden></div>
     <div class="ed-tip" role="tooltip" hidden></div>
     <span class="ed-measure" aria-hidden="true">MMMMMMMMMM</span>`;
   const input = root.querySelector(".ed-input");
@@ -36,9 +42,10 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
   const gutter = root.querySelector(".ed-gutter");
   const scroller = root.querySelector(".ed-scroll");
   const card = root.querySelector(".ed-card");
+  const pickerBox = root.querySelector(".ed-picker");
   const tip = root.querySelector(".ed-tip");
 
-  const state = { problems: [], active: new Set(), symbols: {}, suggestions: null, selected: 0, tipProblem: null, errorLine: 0 };
+  const state = { problems: [], active: new Set(), symbols: {}, suggestions: null, selected: 0, tipProblem: null, errorLine: 0, picker: null, pickerDismissed: null };
   input.value = value;
   input.setSelectionRange(0, 0);   // start at the top-left, not scrolled to the end
 
@@ -90,10 +97,13 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
   function suggest(force = false) {
     const cursor = input.selectionStart;
     if (cursor !== input.selectionEnd) return closeCard();
+    // a blank drum thread gets the beat grid rather than the card; ctrl+space still opens the card
+    if (!force && blankDrumThread(cursor)) return closeCard();
     const result = complete(input.value, cursor, state.symbols, { force });
     if (result.items.length === 0) return closeCard();
     state.suggestions = result;
     state.selected = 0;
+    hidePicker();
     drawCard();
   }
 
@@ -121,7 +131,100 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
   function closeCard() {
     state.suggestions = null;
     card.hidden = true;
+    updatePicker();
   }
+
+  /* ---------- the beat grid and bar picker ---------- */
+
+  function blankDrumThread(cursor) {
+    const p = pickerAt(input.value, cursor);
+    return p?.kind === "beat" && p.blank && currentLine(cursor) !== state.pickerDismissed;
+  }
+
+  function currentLine(cursor) {
+    const start = input.value.lastIndexOf("\n", cursor - 1) + 1;
+    const end = input.value.indexOf("\n", cursor);
+    return input.value.slice(start, end < 0 ? input.value.length : end);
+  }
+
+  function hidePicker() {
+    state.picker = null;
+    pickerBox.hidden = true;
+  }
+
+  function updatePicker() {
+    const cursor = input.selectionStart;
+    const focused = document.activeElement === input || pickerBox.contains(document.activeElement);
+    const picker = focused && !state.suggestions && cursor === input.selectionEnd ? pickerAt(input.value, cursor) : null;
+    if (!picker || currentLine(cursor) === state.pickerDismissed) return hidePicker();
+    state.picker = picker;
+    drawPicker(picker, cursor);
+  }
+
+  function drawPicker(picker, cursor) {
+    const isBeat = picker.kind === "beat";
+    const cells = isBeat ? picker.steps : picker.bars;
+    const perGroup = isBeat ? picker.perBeat : PICKER_BARS_PER_GROUP;
+    const name = (i) => (isBeat ? `beat ${Math.floor(i / perGroup) + 1}, step ${(i % perGroup) + 1}` : `bar ${i + 1}`);
+    const text = (i) => (isBeat ? (i % perGroup === 0 ? i / perGroup + 1 : "") : i + 1);
+    const groups = Array.from({ length: Math.ceil(cells.length / perGroup) }, (_, g) =>
+      `<div class="ed-picker-group" role="group">${cells.slice(g * perGroup, (g + 1) * perGroup).map((on, k) => {
+        const i = g * perGroup + k;
+        return `<button type="button" class="ed-picker-cell${on ? " on" : ""}" data-cell="${i}" aria-pressed="${on}" aria-label="${name(i)}" tabindex="-1">${text(i)}</button>`;
+      }).join("")}</div>`).join("");
+    const title = isBeat
+      ? `<strong>${esc(picker.name)}</strong> plays <code>${esc(picker.drum)}</code>: click the steps you want`
+      : `click the bars where <code>${esc(picker.verb || "rev")}</code> plays`;
+    const focus = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.cell : null;
+    pickerBox.innerHTML = `<p class="ed-picker-title">${title}</p><div class="ed-picker-cells">${groups}</div>
+      <p class="ed-picker-keys">it writes the code on your line · ctrl+enter to hear it · esc closes · ctrl+b to use the keyboard</p>`;
+    if (focus !== null && focus !== undefined) pickerBox.querySelector(`[data-cell="${focus}"]`)?.focus();
+    pickerBox.hidden = false;
+    const lineStart = input.value.lastIndexOf("\n", cursor - 1) + 1;
+    const pos = coordsOf(lineStart);
+    pickerBox.style.left = `${Math.max(8, pos.x - 4)}px`;
+    const below = pos.y + pos.lineHeight + 4;
+    const fits = below + pickerBox.offsetHeight <= root.clientHeight;
+    pickerBox.style.top = `${fits ? below : Math.max(0, pos.y - pickerBox.offsetHeight - 4)}px`;
+  }
+
+  function toggleCell(i) {
+    const picker = state.picker;
+    if (!picker) return;
+    const isBeat = picker.kind === "beat";
+    const cells = (isBeat ? picker.steps : picker.bars).map((on, k) => (k === i ? !on : on));
+    const change = isBeat ? applyBeat(picker, cells) : applyBars(picker, cells);
+    if (!change) return;   // the last bar stays picked: every needs at least one
+    const keyboard = pickerBox.contains(document.activeElement);
+    replaceRange(change.start, change.end, change.text);
+    // stay on the same picker: the pattern for a beat, the every/when for bars
+    const caret = isBeat ? change.start + 1 : change.start + change.text.length;
+    input.setSelectionRange(caret, caret);
+    closeCard();
+    if (keyboard) pickerBox.querySelector(`[data-cell="${i}"]`)?.focus();
+  }
+
+  pickerBox.addEventListener("mousedown", (e) => {
+    e.preventDefault();   // keep the caret in the editor
+    const cell = e.target.closest("[data-cell]");
+    if (cell) toggleCell(Number(cell.dataset.cell));
+  });
+  pickerBox.addEventListener("keydown", (e) => {
+    const cell = e.target.closest("[data-cell]");
+    if (!cell) return;
+    const i = Number(cell.dataset.cell);
+    const total = pickerBox.querySelectorAll("[data-cell]").length;
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      pickerBox.querySelector(`[data-cell="${(i + (e.key === "ArrowRight" ? 1 : total - 1)) % total}"]`).focus();
+    } else if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      toggleCell(i);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      input.focus();
+    }
+  });
 
   function accept(i = state.selected) {
     const { from, to, items } = state.suggestions;
@@ -198,6 +301,7 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
   }
 
   input.addEventListener("input", () => {
+    state.pickerDismissed = null;
     render();
     onInput(input.value);
     suggest();
@@ -227,6 +331,16 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
         return;
       }
     }
+    if (e.key === "Escape" && state.picker) {
+      state.pickerDismissed = currentLine(input.selectionStart);
+      hidePicker();
+      return;
+    }
+    if (mod && e.key === "b" && state.picker) {
+      e.preventDefault();
+      pickerBox.querySelector("[data-cell]")?.focus();
+      return;
+    }
     if (mod && e.key === "Enter") {
       e.preventDefault();
       closeCard();
@@ -243,7 +357,12 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
     }
   });
   input.addEventListener("blur", () => setTimeout(closeCard, 120));
+  input.addEventListener("focus", updatePicker);
   input.addEventListener("click", closeCard);
+  input.addEventListener("keyup", (e) => {
+    if (!state.suggestions && e.key !== "Escape") updatePicker();
+  });
+  pickerBox.addEventListener("focusout", () => setTimeout(updatePicker, 120));
   scroller.addEventListener("scroll", () => { closeCard(); hideTip(); });
 
   render();
