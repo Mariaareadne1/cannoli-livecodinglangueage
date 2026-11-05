@@ -8,6 +8,7 @@ import { compile } from "./lang/compile.js";
 import { Engine } from "./audio/engine.js";
 import { findSliders, applySlider } from "./editor/pickers.js";
 import { renderBar } from "./core/render.js";
+import { createTimelinePanel } from "./timeline-panel.js";
 import { createEditor } from "./editor/editor.js";
 import { EXAMPLES } from "./examples.js";
 import { codeFromUrl } from "./share.js";
@@ -73,6 +74,13 @@ function playLive() {
   if (errors.length === 0) engine.live(program);
 }
 
+const timeline = createTimelinePanel({
+  root: $("timeline"),
+  moreButton: $("timelineMore"),
+  getText: () => editor.value,
+  edit: (change) => editor.edit(change),
+});
+
 /* ---------- checking as you type ---------- */
 
 function lint() {
@@ -88,6 +96,7 @@ function lint() {
   editor.setProblems(problems);
   renderProblems(problems);
   renderSliders();
+  timeline.update(result);
   return result;
 }
 
@@ -295,6 +304,8 @@ function highlightSounding() {
 }
 
 function frame() {
+  const now = engine.position();
+  timeline.setBar(now ? now.bar + 1 : 0);
   renderStatus();
   drawThreads();
   highlightSounding();
@@ -352,7 +363,7 @@ function savePrefs(change) {
 
 /* ---------- side panel: live / reference, and the divider ---------- */
 
-const SIDE_DEFAULT_W = { live: "min(380px, 38vw)", reference: "46vw" };
+const SIDE_DEFAULT_W = { live: "min(380px, 38vw)", timeline: "min(460px, 42vw)", reference: "46vw" };
 const DIVIDER_STEP_PX = 24;
 
 function openSideTab(name) {
@@ -363,6 +374,7 @@ function openSideTab(name) {
   if (name === "reference" && !$("referenceFrame").src) $("referenceFrame").src = "sheet.html?embed";
   setSideWidth(prefs.sideWidth?.[name] ?? SIDE_DEFAULT_W[name]);
   savePrefs({ sideTab: name });
+  if (name === "timeline") timeline.draw();
 }
 
 function currentSideTab() {
@@ -413,7 +425,7 @@ window.addEventListener("message", (e) => {
   say(`loaded "${e.data.name ?? "song"}" — ctrl+enter to hear it (ctrl+z brings back what you had)`);
 });
 
-openSideTab(prefs.sideTab === "reference" ? "reference" : "live");
+openSideTab(["reference", "timeline"].includes(prefs.sideTab) ? prefs.sideTab : "live");
 
 /* ---------- helpers ---------- */
 

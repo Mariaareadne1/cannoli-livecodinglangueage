@@ -50,8 +50,19 @@
   <aside class="side" id="side">
     <div class="side-tabs" role="tablist" aria-label="Side panel">
       <button type="button" role="tab" data-side-tab="live" aria-selected="true">live</button>
+      <button type="button" role="tab" data-side-tab="timeline" aria-selected="false">timeline</button>
       <button type="button" role="tab" data-side-tab="reference" aria-selected="false">reference</button>
-      <a class="side-out" id="referenceOut" href="sheet.html" target="_blank" rel="noopener" hidden>oh in its own tab ↗</a>
+      <a class="side-out" id="referenceOut" href="sheet.html" target="_blank" rel="noopener" hidden>open in its own tab ↗</a>
+    </div>
+
+    <div class="side-pane" data-side-pane="timeline" role="tabpanel" hidden>
+      <section class="panel">
+        <h2>song timeline</h2>
+        <p class="dim tl-help">Click or drag along a row to choose when each part plays. The last bar carries on.</p>
+        <div class="tl" id="timeline"></div>
+        <button type="button" class="btn tl-more" id="timelineMore">+ 8 bars</button>
+        <p class="dim tl-help">Lighter bars are on, but that part has nothing to play there.</p>
+      </section>
     </div>
 
     <div class="side-pane" data-side-pane="reference" role="tabpanel" hidden>

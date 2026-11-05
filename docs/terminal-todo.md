@@ -19,6 +19,15 @@ The logic is already shared and tested in `src/editor/pickers.js`
 - [ ] `esc` closes the grid for that line until the line changes
 - [ ] Add it to the editor keys in the guide's reference (`cli/guide-text.js`) and the README
 
+## Song timeline
+
+The logic is in `src/editor/timeline.js` (`readTimeline`, `applyTimeline`, `timelineLength`). The web version is `src/timeline-panel.js`.
+
+- [ ] Add it as a pane, like threads: `cannoli timeline`, one row per thread and one column per bar
+- [ ] Click and drag along a row with the mouse, or arrows and `space`
+- [ ] It needs a way to send edits back to the editor: panes only listen today (`cli/link.js` broadcasts one way)
+- [ ] Mark the bar playing now, and dim bars where a part has nothing to play
+
 ## Chord picker
 
 The logic is in `src/editor/chord-picker.js` (`chordOptions`, `goodNext`, `progressionsFor`, `setChord`, `addBar`, `removeBar`, `applyChords`),

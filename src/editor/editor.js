@@ -694,6 +694,17 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
       render();
     },
     applyFix,
+    /** Another panel changed the code: one undoable step, leaving the caret where it was and the editor unfocused. */
+    edit(change) {
+      const cursor = input.selectionStart;
+      const growth = change.text.length - (change.end - change.start);
+      replaceRange(change.start, change.end, change.text);
+      const at = change.start < cursor ? cursor + growth : cursor;
+      input.setSelectionRange(at, at);
+      closeCard();
+      input.blur();
+      onSlide();
+    },
     /** A slider in the side panel moved: rewrite its number without taking the focus. */
     slideTo(change) {
       writeQuietly(change);
