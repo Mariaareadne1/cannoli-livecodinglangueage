@@ -5,13 +5,15 @@
        Shift+Tab to write out the whole line it shows)
      · a grid under drum threads and every/firstOf/lastOf: click
        the beats or bars you want and it writes the code
+     · a slider on words with a number range: drag it to hear the
+       change, then keep the number or put a slider in the code
      · hover on an underlined problem → what's wrong + a Fix button
      · one-click fixes that stay on the undo stack
    ============================================================ */
 
 import { highlight } from "./highlight.js";
 import { complete } from "./complete.js";
-import { pickerAt, applyBeat, applyBars } from "./pickers.js";
+import { pickerAt, applyBeat, applyBars, applySlider, addSlider } from "./pickers.js";
 
 const PAD_X = 16;
 const PAD_Y = 14;
@@ -22,7 +24,7 @@ const PICKER_BARS_PER_GROUP = 4;
  * @param {HTMLElement} root
  * @param {{ value: string, onRun: () => void, onStop: (now: boolean) => void, onInput: (text: string) => void }} opts
  */
-export function createEditor(root, { value, onRun, onStop, onInput }) {
+export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {} }) {
   root.classList.add("ed");
   root.innerHTML = `
     <div class="ed-gutter" aria-hidden="true"></div>
@@ -45,7 +47,7 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
   const pickerBox = root.querySelector(".ed-picker");
   const tip = root.querySelector(".ed-tip");
 
-  const state = { problems: [], active: new Set(), symbols: {}, suggestions: null, selected: 0, tipProblem: null, errorLine: 0, picker: null, pickerDismissed: null };
+  const state = { problems: [], active: new Set(), symbols: {}, suggestions: null, selected: 0, tipProblem: null, errorLine: 0, picker: null, pickerDismissed: null, sliding: false, heldCaret: null };
   input.value = value;
   input.setSelectionRange(0, 0);   // start at the top-left, not scrolled to the end
 
@@ -97,13 +99,13 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
   function suggest(force = false) {
     const cursor = input.selectionStart;
     if (cursor !== input.selectionEnd) return closeCard();
-    // a blank drum thread gets the beat grid rather than the card; ctrl+space still opens the card
-    if (!force && blankDrumThread(cursor)) return closeCard();
     const result = complete(input.value, cursor, state.symbols, { force });
     if (result.items.length === 0) return closeCard();
     state.suggestions = result;
     state.selected = 0;
-    hidePicker();
+    // a blank drum thread shows its grid and its ideas together
+    if (blankDrumThread(cursor)) updatePicker();
+    else hidePicker();
     drawCard();
   }
 
@@ -123,7 +125,8 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
       </div>`;
     const pos = coordsOf(from);
     card.style.left = `${Math.max(8, pos.x - 4)}px`;
-    card.style.top = `${pos.y + pos.lineHeight + 4}px`;
+    const underGrid = !pickerBox.hidden && pickerBox.offsetTop > pos.y;
+    card.style.top = `${underGrid ? pickerBox.offsetTop + pickerBox.offsetHeight + 4 : pos.y + pos.lineHeight + 4}px`;
     card.hidden = false;
     card.querySelector(".sel")?.scrollIntoView({ block: "nearest" });
   }
@@ -152,14 +155,75 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
     pickerBox.hidden = true;
   }
 
+  /* Only touch the page if something changed: replacing a control takes the focus off it. */
+  function setPickerHtml(html) {
+    if (pickerBox.dataset.drawn === html) return;
+    pickerBox.dataset.drawn = html;
+    pickerBox.innerHTML = html;
+  }
+
+  /* The browser can lose the text box's caret while a slider has the focus, so the editor holds on to it. */
+  function caret() {
+    return state.heldCaret ?? input.selectionStart;
+  }
+
   function updatePicker() {
-    const cursor = input.selectionStart;
+    if (state.sliding) return;   // redrawing would drop the slider out of the player's hand
+    const cursor = caret();
     const focused = document.activeElement === input || pickerBox.contains(document.activeElement);
-    const picker = focused && !state.suggestions && cursor === input.selectionEnd ? pickerAt(input.value, cursor) : null;
+    const open = !state.suggestions || blankDrumThread(cursor);
+    const noSelection = state.heldCaret !== null || input.selectionStart === input.selectionEnd;
+    const picker = focused && open && noSelection ? pickerAt(input.value, cursor) : null;
     if (!picker || currentLine(cursor) === state.pickerDismissed) return hidePicker();
     state.picker = picker;
-    drawPicker(picker, cursor);
+    if (picker.kind === "slider") {
+      drawSlider(picker);
+      placePicker(cursor);
+    } else {
+      drawPicker(picker, cursor);
+    }
   }
+
+  function drawSlider(picker) {
+    const hadFocus = pickerBox.contains(document.activeElement);
+    setPickerHtml(`<p class="ed-picker-title"><code>${esc(picker.word)}</code> from ${picker.min} to ${picker.max}: drag to hear it</p>
+      <div class="ed-picker-slide">
+        <input type="range" class="ed-picker-range" min="${picker.min}" max="${picker.max}" step="${picker.step}" value="${picker.value}" aria-label="${esc(picker.word)}" />
+        <output class="ed-picker-value">${picker.value}</output>
+      </div>
+      <div class="ed-picker-actions">
+        <button type="button" class="btn" data-action="keep">keep this number</button>
+        ${picker.canAddToCode && !picker.inCode ? '<button type="button" class="btn" data-action="add">add a slider to the code</button>' : ""}
+      </div>
+      <p class="ed-picker-keys">${picker.inCode ? "this slider also sits in the live panel · " : ""}esc closes · ctrl+b to use the keyboard</p>`);
+    pickerBox.hidden = false;
+    if (hadFocus) pickerBox.querySelector(".ed-picker-range").focus();
+  }
+
+  /* Write a new number straight away, without moving focus off the slider. */
+  function writeSliderValue(value) {
+    const change = applySlider(state.picker, value);
+    writeQuietly(change);
+    state.heldCaret = change.start + 1;
+    state.picker = pickerAt(input.value, state.heldCaret) ?? state.picker;
+    pickerBox.querySelector(".ed-picker-value").textContent = state.picker.value;
+    onSlide();
+  }
+
+  function writeQuietly({ start, end, text }) {
+    input.setRangeText(text, start, end, "preserve");
+    render();
+    onInput(input.value);
+  }
+
+  pickerBox.addEventListener("input", (e) => {
+    if (!e.target.matches(".ed-picker-range")) return;
+    state.sliding = true;
+    writeSliderValue(Number(e.target.value));
+  });
+  pickerBox.addEventListener("change", (e) => {
+    if (e.target.matches(".ed-picker-range")) state.sliding = false;
+  });
 
   function drawPicker(picker, cursor) {
     const isBeat = picker.kind === "beat";
@@ -176,10 +240,14 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
       ? `<strong>${esc(picker.name)}</strong> plays <code>${esc(picker.drum)}</code>: click the steps you want`
       : `click the bars where <code>${esc(picker.verb || "rev")}</code> plays`;
     const focus = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.cell : null;
-    pickerBox.innerHTML = `<p class="ed-picker-title">${title}</p><div class="ed-picker-cells">${groups}</div>
-      <p class="ed-picker-keys">it writes the code on your line · ctrl+enter to hear it · esc closes · ctrl+b to use the keyboard</p>`;
+    setPickerHtml(`<p class="ed-picker-title">${title}</p><div class="ed-picker-cells">${groups}</div>
+      <p class="ed-picker-keys">it writes the code on your line · ctrl+enter to hear it · esc closes · ctrl+b to use the keyboard</p>`);
     if (focus !== null && focus !== undefined) pickerBox.querySelector(`[data-cell="${focus}"]`)?.focus();
     pickerBox.hidden = false;
+    placePicker(cursor);
+  }
+
+  function placePicker(cursor) {
     const lineStart = input.value.lastIndexOf("\n", cursor - 1) + 1;
     const pos = coordsOf(lineStart);
     pickerBox.style.left = `${Math.max(8, pos.x - 4)}px`;
@@ -198,18 +266,42 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
     const keyboard = pickerBox.contains(document.activeElement);
     replaceRange(change.start, change.end, change.text);
     // stay on the same picker: the pattern for a beat, the every/when for bars
-    const caret = isBeat ? change.start + 1 : change.start + change.text.length;
-    input.setSelectionRange(caret, caret);
+    const at = isBeat ? change.start + 1 : change.start + change.text.length;
+    input.setSelectionRange(at, at);
     closeCard();
     if (keyboard) pickerBox.querySelector(`[data-cell="${i}"]`)?.focus();
   }
 
   pickerBox.addEventListener("mousedown", (e) => {
+    if (e.target.matches(".ed-picker-range")) return;   // the slider needs the mouse to itself
     e.preventDefault();   // keep the caret in the editor
     const cell = e.target.closest("[data-cell]");
     if (cell) toggleCell(Number(cell.dataset.cell));
+    const action = e.target.closest("[data-action]")?.dataset.action;
+    if (action) finishSlider(action);
   });
+
+  function finishSlider(action) {
+    state.sliding = false;
+    if (action === "add") {
+      const change = addSlider(state.picker, state.picker.value);
+      replaceRange(change.start, change.end, change.text);
+      input.setSelectionRange(change.start + 1, change.start + 1);
+      onSlide();
+      closeCard();
+      return;
+    }
+    state.pickerDismissed = currentLine(caret());
+    input.focus();
+    hidePicker();
+  }
   pickerBox.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && e.target.matches(".ed-picker-range")) {
+      e.preventDefault();
+      state.sliding = false;
+      input.focus();
+      return;
+    }
     const cell = e.target.closest("[data-cell]");
     if (!cell) return;
     const i = Number(cell.dataset.cell);
@@ -338,7 +430,7 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
     }
     if (mod && e.key === "b" && state.picker) {
       e.preventDefault();
-      pickerBox.querySelector("[data-cell]")?.focus();
+      pickerBox.querySelector("[data-cell], .ed-picker-range")?.focus();
       return;
     }
     if (mod && e.key === "Enter") {
@@ -357,7 +449,11 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
     }
   });
   input.addEventListener("blur", () => setTimeout(closeCard, 120));
-  input.addEventListener("focus", updatePicker);
+  input.addEventListener("focus", () => {
+    if (state.heldCaret !== null) input.setSelectionRange(state.heldCaret, state.heldCaret);
+    state.heldCaret = null;
+    updatePicker();
+  });
   input.addEventListener("click", closeCard);
   input.addEventListener("keyup", (e) => {
     if (!state.suggestions && e.key !== "Escape") updatePicker();
@@ -387,6 +483,11 @@ export function createEditor(root, { value, onRun, onStop, onInput }) {
       render();
     },
     applyFix,
+    /** A slider in the side panel moved: rewrite its number without taking the focus. */
+    slideTo(change) {
+      writeQuietly(change);
+      onSlide();
+    },
     scrollTo(offset) {
       const pos = coordsOf(offset);
       scroller.scrollTop = Math.max(0, pos.y - scroller.clientHeight / 2);

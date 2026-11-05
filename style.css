@@ -324,6 +324,15 @@ body.resizing iframe { pointer-events: none; }
 .ed-picker-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ed-picker-cell.on { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
 .ed-picker-keys { color: var(--ink-faint); font-size: 11px; }
+.ed-picker-slide { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.ed-picker-range { flex: 1; min-width: 220px; accent-color: var(--accent); }
+.ed-picker-value { min-width: 3.5em; color: var(--ink); font-weight: 600; text-align: right; }
+.ed-picker-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.ed-picker-actions .btn { padding: 3px 9px; font-size: 11px; }
+.slider-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.slider-row { display: grid; grid-template-columns: minmax(70px, auto) 1fr 3em; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-dim); }
+.slider-row input { width: 100%; accent-color: var(--accent); }
+.slider-row output { color: var(--ink); text-align: right; }
 .ed-card ul { margin: 0; padding: 4px 0; list-style: none; overflow-y: auto; border-right: 1px solid var(--line); }
 .ed-card li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 10px; cursor: pointer; }
 .ed-card li.sel { background: var(--bg-3); }

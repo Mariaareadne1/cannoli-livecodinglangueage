@@ -6,6 +6,7 @@
 
 import { compile } from "./lang/compile.js";
 import { Engine } from "./audio/engine.js";
+import { findSliders, applySlider } from "./editor/pickers.js";
 import { createEditor } from "./editor/editor.js";
 import { EXAMPLES } from "./examples.js";
 import { codeFromUrl } from "./share.js";
@@ -39,7 +40,15 @@ const editor = createEditor($("editor"), {
     clearTimeout(state.lintTimer);
     state.lintTimer = setTimeout(lint, LINT_DELAY_MS);
   },
+  onSlide: playLive,
 });
+
+/* A slider moved: while playing, the rest of the bar follows it straight away. */
+function playLive() {
+  if (!engine.playing) return;
+  const { errors, program } = compile(editor.value);
+  if (errors.length === 0) engine.live(program);
+}
 
 /* ---------- checking as you type ---------- */
 
@@ -55,8 +64,30 @@ function lint() {
   ];
   editor.setProblems(problems);
   renderProblems(problems);
+  renderSliders();
   return result;
 }
+
+/* ---------- sliders written in the code ---------- */
+
+function renderSliders() {
+  const sliders = findSliders(editor.value);
+  const list = $("sliderList");
+  $("slidersPanel").hidden = sliders.length === 0;
+  // leave the row alone while it's being dragged, or it would drop out of the player's hand
+  if (list.contains(document.activeElement) && list.children.length === sliders.length) return;
+  list.innerHTML = sliders.map((s, i) => `<li class="slider-row">
+    <label for="slider${i}">${esc(s.label)}</label>
+    <input id="slider${i}" type="range" data-slider="${i}" min="${s.min}" max="${s.max}" step="${s.step}" value="${s.value}" />
+    <output>${s.value}</output></li>`).join("");
+}
+
+$("sliderList").addEventListener("input", (e) => {
+  const slider = findSliders(editor.value)[Number(e.target.dataset.slider)];
+  if (!slider) return;
+  editor.slideTo(applySlider(slider, Number(e.target.value)));
+  e.target.nextElementSibling.textContent = findSliders(editor.value)[Number(e.target.dataset.slider)].value;
+});
 
 function problem(err, severity) {
   return { start: err.start, end: err.end, message: err.message, fix: err.fix, severity };

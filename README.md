@@ -95,6 +95,8 @@ Songs are saved in the visitor's own browser, so nothing needs a server.
 | **suggestion card** | pops up as you type. **↑ ↓** choose, **Tab** inserts the word, **Shift+Tab** writes out the whole line it shows, **Esc** closes. **Ctrl+Space** opens it anywhere. |
 | **fill in the blank** | type a thread name and a colon (`hats: `), a `def` (`def lift n = `) or a variable (`theme = `) and the card offers whole lines to finish it, matched to the name and the style |
 | **beat and bar grids** | type a drum thread (`kick: `, `drums: `, `hats: `) or `every ` and a small grid opens under the line. Click the beats or bars you want and it writes the code. **Esc** closes it, **Ctrl+B** uses it from the keyboard. Web app only for now: see [docs/terminal-todo.md](docs/terminal-todo.md). |
+| **ideas for a name** | type any name and a colon (`kick:`, `arp:`, `slowlead:`, `synth:`) and the card offers a few whole lines for that kind of part. They use your style's grooves, your melody and your kick, and the rest of the name changes them: `slowlead` is a slow lead. |
+| **sliders** | put the cursor on a number word (`gain`, `pan`, `bright`, `fast`, `ply`, `clip`, `tempo`, the effects …) and a slider opens. While playing, you hear it as you drag, except `tempo`, which lands on the next bar. Then **keep this number**, or **add a slider to the code**, which writes `gain slider(0.5, 0, 1)` and adds it to the live panel. Web app only for now. |
 | **problems** | mistakes are underlined; hover one to see what's wrong and click its fix. The problems panel has **fix all**. |
 | **style** | the style menu sets the feel (rave, house, funk, chill) by writing the `style` line |
 | **theme** | the theme menu (see [Themes](#themes)) |

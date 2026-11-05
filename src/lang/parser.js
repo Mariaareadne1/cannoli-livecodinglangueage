@@ -379,7 +379,7 @@ class Parser {
 
   startsNumber() {
     const tok = this.peek();
-    return Boolean(tok) && (tok.type === "num" || tok.text === "(" || (tok.text === "-" && this.peek(1)?.type === "num"));
+    return Boolean(tok) && (tok.type === "num" || tok.text === "(" || tok.text === "slider" || (tok.text === "-" && this.peek(1)?.type === "num"));
   }
 
   /* ---------- numbers and conditions ---------- */
@@ -402,6 +402,26 @@ class Parser {
     return left;
   }
 
+  /* slider(value, min, max): plays its value. The editor draws the control and rewrites the value as you drag. */
+  slider(word) {
+    this.next();
+    const value = this.signedNumber(word);
+    while (this.is(",")) {
+      this.next();
+      this.signedNumber(word);
+    }
+    this.expect(")", 'This "slider(" is missing its ")".');
+    return { k: "nnum", value, src: word };
+  }
+
+  signedNumber(owner) {
+    const negative = this.is("-");
+    if (negative) this.next();
+    const tok = this.next();
+    if (tok?.type !== "num") throw new CannoliError("A slider is written like  slider(0.5, 0, 1): its value, lowest and highest.", tok ?? owner);
+    return negative ? -tok.value : tok.value;
+  }
+
   numAtom() {
     const tok = this.next();
     if (!tok) throw new CannoliError("Expected a number here.", this.endRange());
@@ -412,6 +432,7 @@ class Parser {
       this.expect(")", 'This "(" is missing its ")".');
       return inner;
     }
+    if (tok.text === "slider" && this.is("(")) return this.slider(tok);
     if (tok.type === "name") return { k: "nname", name: tok.text, src: tok };
     throw new CannoliError(`Expected a number here, not "${tok.text}".`, tok);
   }

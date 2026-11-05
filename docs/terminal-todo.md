@@ -2,6 +2,8 @@
 
 Web features the terminal editor (`cli/edit.js`) doesn't have yet. The web version is the reference.
 
+Already working in the terminal, because they're in the shared code: the Strudel names, `slider(...)` in the language, and the ideas card when you name a thread.
+
 ## Beat grid and bar picker
 
 The logic is already shared and tested in `src/editor/pickers.js`
@@ -14,9 +16,19 @@ The logic is already shared and tested in `src/editor/pickers.js`
 - [ ] Clicking: turn on mouse reporting only while a grid is showing (so normal text selection still works),
       and teach `cli/keys.js` the mouse sequences (`\x1b[<0;x;yM`)
 - [ ] Keyboard: `ctrl+b` to enter the grid, `← →` to move, `space` to toggle, `esc` to leave
-- [ ] Blank drum threads show the grid instead of the suggestion card (`ctrl+space` or similar still opens the card)
 - [ ] `esc` closes the grid for that line until the line changes
 - [ ] Add it to the editor keys in the guide's reference (`cli/guide-text.js`) and the README
+
+## Sliders
+
+The logic is in `src/editor/pickers.js` (`applySlider`, `addSlider`, `findSliders`), and the engine's
+`live(program)` already works in the terminal. It needs the drawing and input.
+
+- [ ] Show a slider when the cursor is on `gain`, `pan`, `fast`, `tempo` and the rest (`pickerAt` returns `kind: "slider"`)
+- [ ] Drag it with the mouse, or `← →` once inside it; call `engine.live` as it moves
+- [ ] "keep this number" and "add a slider to the code" (`slider(0.5, 0, 1)`)
+- [ ] Show the song's `slider(...)` values somewhere always visible, such as a panel in the guide or a new pane
+- [ ] Blank drum threads should show the ideas card and the grid together, as the web editor does
 
 ## Manual
 

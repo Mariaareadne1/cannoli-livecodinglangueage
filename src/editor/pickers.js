@@ -22,6 +22,18 @@ const THREAD_DRUMS = {
   bell: "cb", cowbell: "cb", cb: "cb",
   shaker: "sh", sh: "sh",
 };
+// the words with a number you can slide: [lowest, highest, step, value if none is written]
+const SLIDERS = {
+  gain: [0, 1, 0.01, 0.5], pan: [-1, 1, 0.01, 0], bright: [0, 1, 0.01, 0.5],
+  bloom: [0, 1, 0.01, 0.5], ghost: [0, 1, 0.01, 0.5], tape: [0, 1, 0.01, 0.5], pump: [0, 1, 0.01, 0.6], air: [0, 1, 0.01, 0.4],
+  someCyclesBy: [0, 1, 0.01, 0.5], maybe: [0, 1, 0.01, 0.5], drift: [0, 1, 0.01, 0.3],
+  clip: [0.1, 4, 0.1, 1], fast: [1, 8, 0.5, 2], slow: [1, 8, 0.5, 2], ply: [1, 8, 1, 2], chop: [1, 8, 1, 2],
+  up: [0, 12, 1, 2], down: [0, 12, 1, 2], scaleTranspose: [-12, 12, 1, 2], oct: [-3, 3, 1, 1], rot: [0, 8, 1, 1],
+};
+const SETTING_SLIDERS = { tempo: [40, 220, 1, 120], swing: [0, 0.5, 0.01, 0.1] };
+const CODE_SLIDER = String.raw`slider\(\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*,\s*(-?[\d.]+)\s*\)`;
+const SLIDER_ARG = new RegExp(String.raw`^(\s+)(?:${CODE_SLIDER}|(-?\d*\.?\d+))`);
+const WORD_RE = new RegExp(String.raw`(?:^|[>(\s])(${Object.keys(SLIDERS).join("|")})\b`, "g");
 const BAR_RE = /(?:^\s*|[>(]\s*)(every|firstOf|lastOf|when)\b/g;
 const CLAUSE = String.raw`bar\s*%\s*(\d+)\s*==\s*(\d+)`;
 
@@ -33,6 +45,8 @@ const CLAUSE = String.raw`bar\s*%\s*(\d+)\s*==\s*(\d+)`;
 export function pickerAt(text, cursor) {
   const line = lineAt(text, cursor);
   if (/^\s*#/.test(line.code)) return null;
+  const slider = sliderAt(line, cursor - line.start);
+  if (slider) return slider;
   const bars = barPicker(line, cursor - line.start);
   const beat = beatPicker(line, text);
   if (bars && beat) return bars.inSpan ? bars : beat;
@@ -201,4 +215,77 @@ function writeBars(bars) {
   const period = [1, 2, 4, 8, 16].find((p) => bars.every((on, i) => on === bars[i % p]));
   const rests = bars.slice(0, period).flatMap((on, i) => (on ? [(i + 1) % period] : []));
   return `when ${rests.map((rest) => `bar % ${period} == ${rest}`).join(" or ")}`;
+}
+
+/* ---------- sliders ---------- */
+
+function sliderAt(line, column) {
+  const setting = line.code.match(/^(tempo|swing)\b/);
+  if (setting) {
+    const found = readSlider(line, setting[1], setting[1].length, SETTING_SLIDERS[setting[1]]);
+    return found && { ...found, canAddToCode: false };
+  }
+  for (const found of line.code.matchAll(WORD_RE)) {
+    const word = found[1];
+    const wordEnd = found.index + found[0].length;
+    const slider = readSlider(line, word, wordEnd, SLIDERS[word]);
+    if (slider && column >= wordEnd - word.length && column <= slider.line.argEnd - line.start) return { ...slider, canAddToCode: true };
+  }
+  return null;
+}
+
+/* The slider for the word ending at wordEnd, or null if what follows isn't a plain number. */
+function readSlider(line, word, wordEnd, [min, max, step, fallback]) {
+  const rest = line.code.slice(wordEnd);
+  const arg = rest.match(SLIDER_ARG);
+  const after = arg ? rest.slice(arg[0].length) : rest;
+  if (!/^\s*($|>|\))/.test(after)) return null;
+  const inCode = Boolean(arg?.[2]);
+  const value = arg ? Number(arg[2] ?? arg[5]) : fallback;
+  const low = inCode ? Number(arg[3]) : Math.min(min, value);
+  const high = inCode ? Number(arg[4]) : Math.max(max, value);
+  const atEnd = !arg && after.trim() === "";
+  const argEnd = wordEnd + (arg ? arg[0].length : atEnd ? rest.length : 0);
+  return {
+    kind: "slider", word, value, min: low, max: high, step, inCode,
+    line: { ...line, argStart: line.start + wordEnd, argEnd: line.start + argEnd },
+  };
+}
+
+function tidy(value, step) {
+  const places = (String(step).split(".")[1] ?? "").length;
+  return String(Number(value.toFixed(places)));
+}
+
+/** The edit that sets a slider's number, in the code's own form. */
+export function applySlider(picker, value) {
+  const number = tidy(value, picker.step);
+  const text = picker.inCode ? `slider(${number}, ${picker.min}, ${picker.max})` : number;
+  return { start: picker.line.argStart, end: picker.line.argEnd, text: ` ${text}` };
+}
+
+/** The edit that writes a slider into the code at this value. */
+export function addSlider(picker, value) {
+  return applySlider({ ...picker, inCode: true }, value);
+}
+
+/** Every slider written in the song, labelled with its thread. */
+export function findSliders(text) {
+  const out = [];
+  let thread = "";
+  let start = 0;
+  for (const whole of text.split("\n")) {
+    const comment = whole.search(/(^|\s)#/);
+    const code = comment < 0 ? whole : whole.slice(0, comment);
+    thread = code.match(/^([A-Za-z]\w*):/)?.[1] ?? (code.trim() && !code.trim().startsWith(">") ? "" : thread);
+    const line = { start, end: start + whole.length, code };
+    for (const found of code.matchAll(/([A-Za-z]\w*)\s+slider\(/g)) {
+      const word = found[1];
+      const range = SLIDERS[word] ?? [0, 1, 0.01, 0.5];
+      const slider = readSlider(line, word, found.index + word.length, range);
+      if (slider) out.push({ ...slider, label: `${thread} ${word}`.trim() });
+    }
+    start += whole.length + 1;
+  }
+  return out;
 }

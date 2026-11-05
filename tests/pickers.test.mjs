@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { pickerAt, applyBeat, applyBars } from "../src/editor/pickers.js";
+import { pickerAt, applyBeat, applyBars, applySlider, addSlider, findSliders } from "../src/editor/pickers.js";
 import { compile } from "../src/lang/compile.js";
 import { renderBar } from "../src/core/render.js";
 
@@ -126,11 +126,75 @@ test("the code it writes fires on exactly the bars you picked", () => {
 
 test("other conditions don't open it", () => {
   assert.equal(at("lead: 0 2 > when bar > 8 rev"), null);
-  assert.equal(at("lead: 0 2 > fast 2"), null);
+  assert.equal(at("lead: 0 2 > high"), null);
 });
 
 test("on a drum line with every, the cursor decides", () => {
   const text = "kick: 0 . 0 . > bd > every 4 rev";
   assert.equal(pickerAt(text, 8).kind, "beat");
   assert.equal(pickerAt(text, text.length).kind, "bars");
+});
+
+/* ---------- sliders ---------- */
+
+test("a word with a number range opens a slider when the cursor is on it", () => {
+  const p = at("lead: 0 2 > gain 0.4");
+  assert.equal(p.kind, "slider");
+  assert.equal(p.word, "gain");
+  assert.equal(p.value, 0.4);
+  assert.deepEqual([p.min, p.max], [0, 1]);
+  assert.equal(at("lead: 0 2 > pan -0.5").value, -0.5);
+  assert.equal(at("tempo 120").value, 120);
+  assert.equal(at("lead: 0 2 > gain ").value, 0.5);
+  assert.equal(at("lead: 0 2 > pump").word, "pump");
+});
+
+test("the cursor decides between a slider and the other grids", () => {
+  const text = "kick: 0 . 0 . > bd > gain 0.4 > every 4 (fast 2) > high";
+  assert.equal(pickerAt(text, 8).kind, "beat");
+  assert.equal(pickerAt(text, text.indexOf("gain") + 2).kind, "slider");
+  assert.equal(pickerAt(text, text.indexOf("every") + 2).kind, "bars");
+  assert.equal(pickerAt(text, text.indexOf("fast") + 2).word, "fast");
+});
+
+test("sliding rewrites just the number", () => {
+  const text = "lead: 0 2 > gain 0.4 > high";
+  const p = pickerAt(text, text.indexOf("gain") + 2);
+  assert.equal(edit(text, applySlider(p, 0.75)), "lead: 0 2 > gain 0.75 > high");
+  const blank = "lead: 0 2 > gain ";
+  assert.equal(edit(blank, applySlider(at(blank), 0.3)), "lead: 0 2 > gain 0.3");
+  const pump = "lead: 0 2 > pump > high";
+  assert.equal(edit(pump, applySlider(pickerAt(pump, pump.indexOf("pump") + 2), 0.2)), "lead: 0 2 > pump 0.2 > high");
+});
+
+test("it can put a slider in the code, and that slider keeps sliding", () => {
+  const text = "lead: 0 2 > gain 0.4";
+  const withSlider = edit(text, addSlider(at(text), 0.6));
+  assert.equal(withSlider, "lead: 0 2 > gain slider(0.6, 0, 1)");
+  assert.deepEqual(compile(withSlider + "\n").errors, []);
+  const p = at(withSlider);
+  assert.equal(p.value, 0.6);
+  assert.ok(p.inCode);
+  assert.equal(edit(withSlider, applySlider(p, 0.2)), "lead: 0 2 > gain slider(0.2, 0, 1)");
+});
+
+test("a slider in the code plays its value", () => {
+  const { program, errors } = compile("lead: 0 2 4 > gain slider(0.25, 0, 1)\n");
+  assert.deepEqual(errors, []);
+  assert.equal(renderBar(program, 0)[0].props.gain, 0.25);
+});
+
+test("every slider in the song can be listed, with its thread's name", () => {
+  const song = "lead: 0 2 > gain slider(0.5, 0, 1)\n  > pan slider(-0.2, -1, 1)\nbass: 0 > low\nhats: 0 0 > hh > gain slider(0.3, 0, 1)\n";
+  assert.deepEqual(findSliders(song).map((s) => [s.label, s.value, s.min, s.max]), [
+    ["lead gain", 0.5, 0, 1], ["lead pan", -0.2, -1, 1], ["hats gain", 0.3, 0, 1],
+  ]);
+});
+
+test("it only offers sliders for plain numbers", () => {
+  assert.equal(at("lead: 0 2 > gain bar / 16"), null);
+  assert.equal(at("def lift n = up n"), null);
+  assert.equal(at("gain: 0 2 > high"), null);
+  assert.equal(pickerAt("lead: 0 2 > gain 0.4 # gain 0.9", 18).value, 0.4);
+  assert.equal(at("lead: 0 2 > gain 0.4 # gain 0.9"), null);
 });

@@ -193,6 +193,8 @@ function grids() {
   return table(["type this", "you get", "it writes"], [
     [inline("kick: "), "a row of steps split into beats. Also for snare, hats, clap, drums and any thread playing a drum.", inline("kick: 0 . . 0 . . 0 . > bd")],
     [inline("lead: 0 2 4 > every "), "16 bars in fours: click the ones you want. Also for firstOf, lastOf and when bar % 4 == 1.", inline("lead: 0 2 4 > every 4 rev")],
+    [inline("lead: 0 2 4 > gain 0.5"), "with the cursor on it, a slider from 0 to 1. While playing, you hear it as you drag. Also for pan, bright, fast, slow, ply, clip, tempo, swing, the effects and more.", inline("lead: 0 2 4 > gain slider(0.5, 0, 1)")],
+    [inline("arp:"), "a few whole lines for that kind of part, which fit your style, melody and kick. Any name works, and the rest of the name changes them: slowlead is a slow lead.", inline("arp: chord > arp > fast 2 > high > pluck")],
   ]) + `<p>The code on your line updates with every click, and clicking a line you've already written shows what it plays. It writes the simplest code it can: a named groove when the steps match one, and <code>every</code> or <code>firstOf</code> when the bars are regular. Press <kbd>esc</kbd> to close a grid, or <kbd>ctrl</kbd>+<kbd>b</kbd> to use it from the keyboard.</p>`;
 }
 
@@ -239,7 +241,7 @@ document.getElementById("sheet").innerHTML = [
   section("grooves", "grooves", grooves(), "Named 16-step rhythms for <code>beat name</code>. Each lit square is a hit; the brighter edge marks each beat."),
   section("styles", "styles", styles() + examples("styles"), "One line at the top sets the feel. A tempo line still wins over the style's tempo."),
   section("strudel", "coming from strudel", strudel(), "cannoli uses Strudel's name wherever a word does the same thing. Everything that differs is listed here."),
-  section("grids", "click to write code", grids(), "Some lines open a small grid underneath, so you can pick with the mouse instead of typing."),
+  section("grids", "click to write code", grids(), "Some lines open a small control underneath, so you can pick with the mouse instead of typing."),
   section("songs", "songs to learn from", songs(), "Each one builds over time. Open it, press ctrl+enter, and watch which lines light up."),
 ].join("");
 

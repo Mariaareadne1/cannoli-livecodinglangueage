@@ -64,6 +64,11 @@
       <canvas id="threads" aria-label="What each thread plays in the current bar"></canvas>
     </section>
 
+    <section class="panel" id="slidersPanel" hidden>
+      <h2>sliders</h2>
+      <ul class="slider-list" id="sliderList"></ul>
+    </section>
+
     <section class="panel" id="problems">
       <h2>problems <span class="count" id="problemCount"></span>
         <button type="button" class="link-btn" id="fixAll" hidden>fix all</button></h2>
@@ -88,6 +93,7 @@
         <li><kbd data-mod>ctrl</kbd>+<kbd>.</kbd> stop at the end of the bar <span class="dim">(+shift: now)</span></li>
         <li><kbd data-mod>ctrl</kbd>+<kbd>space</kbd> suggestions · <kbd>tab</kbd> insert · <kbd>shift</kbd>+<kbd>tab</kbd> the whole line</li>
         <li>drum threads and <code>every</code>: click the grid that appears to write the code</li>
+        <li>put the cursor on <code>gain</code>, <code>pan</code>, <code>fast</code> and other numbers for a slider</li>
         <li>hover an underline to see what's wrong</li>
       </ul>
       <p class="dim">Everything else is in the <button type="button" class="link-btn" data-side-tab="reference">reference</button> tab.</p>

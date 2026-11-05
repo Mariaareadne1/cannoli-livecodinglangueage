@@ -17,6 +17,8 @@ import { playNote, saturationCurve, noise, mtof, LOW_CUT_HZ, ROOM_SEND } from ".
 
 const TICK_MS = 25;
 const LOOKAHEAD_S = 0.3;
+const NOTE_LOOKAHEAD_S = 0.15;   // notes start this early, so a live change is heard this soon
+const HIDDEN_LOOKAHEAD_S = 1.5;  // a background tab's timers only run about once a second
 const START_DELAY_S = 0.08;
 const PHRASE_BARS = 4;
 const FADE_S = 0.25;
@@ -48,6 +50,8 @@ export class Engine {
     this.nextBar = 0;
     this.nextBarTime = 0;
     this.bars = [];          // recently scheduled bars, for the visuals
+    this.queue = [];         // notes from those bars that haven't started yet, earliest first
+    this.playedUntil = 0;    // the start time of the last note that has
     this.listeners = new Set();
   }
 
@@ -61,6 +65,8 @@ export class Engine {
     this.playing = true;
     this.stopping = false;
     this.nextBar = 0;
+    this.queue = [];
+    this.playedUntil = 0;
     this.nextBarTime = this.ctx.currentTime + START_DELAY_S;
     this.master.gain.cancelScheduledValues(this.ctx.currentTime);
     this.master.gain.setValueAtTime(MASTER_LEVEL, this.ctx.currentTime);
@@ -73,6 +79,30 @@ export class Engine {
     if (!this.playing) return this.play(program);
     this.pending = program;
     this.stopping = false;
+    this.emit();
+  }
+
+  /**
+   * Swap in a new program for every note that hasn't started yet: heard within a moment, for sliders.
+   * A change of tempo or beats would move the bar lines, so that still waits for the next one.
+   */
+  live(program) {
+    if (!this.playing) return;
+    const { tempo, beats } = this.program.settings;
+    if (program.settings.tempo !== tempo || program.settings.beats !== beats) {
+      this.update(program);
+      return;
+    }
+    this.program = program;
+    this.pending = null;
+    const now = this.ctx.currentTime;
+    this.queue = [];
+    this.bars = this.bars.map((b) => {
+      if (b.time + b.seconds <= now) return b;
+      const notes = safeRender(program, b.bar);
+      this.enqueue(notes, b.time, b.seconds, program);
+      return { ...b, notes, program };
+    });
     this.emit();
   }
 
@@ -120,11 +150,34 @@ export class Engine {
     if (!this.playing) return;
     while (this.nextBarTime < this.ctx.currentTime + LOOKAHEAD_S) {
       if (this.stopping) {
+        this.startNotes(Infinity);   // the rest of this bar still plays
         this.halt(this.nextBarTime);
         return;
       }
       this.scheduleBar();
     }
+    const ahead = globalThis.document?.hidden ? HIDDEN_LOOKAHEAD_S : NOTE_LOOKAHEAD_S;
+    this.startNotes(this.ctx.currentTime + ahead);
+  }
+
+  startNotes(until) {
+    while (this.queue.length && this.queue[0].time < until) {
+      const { note, time } = this.queue.shift();
+      playNote(this.ctx, this.buses, note);
+      this.playedUntil = time;
+    }
+  }
+
+  /* Queue a bar's notes, leaving out any that have already started. */
+  enqueue(notes, time, seconds, program) {
+    const beat = seconds / program.settings.beats;
+    const beatTimes = Array.from({ length: program.settings.beats * 2 }, (_, i) => time + i * beat);
+    const duckTimes = notes.filter((n) => n.drum === "kick").map((n) => time + n.start * seconds);
+    const fresh = notes.map((n) => {
+      const at = time + n.start * seconds;
+      return { time: at, note: { midi: n.midi, drum: n.drum, time: at, seconds: n.dur * seconds, beatTimes, duckTimes, props: n.props } };
+    }).filter((item) => item.time > this.playedUntil);
+    this.queue = [...this.queue, ...fresh].sort((a, b) => a.time - b.time);
   }
 
   scheduleBar() {
@@ -136,24 +189,11 @@ export class Engine {
     const program = this.program;
     const seconds = this.barSeconds(program);
     const time = this.nextBarTime;
-    const beat = seconds / program.settings.beats;
     const notes = safeRender(program, bar);
-    const beatTimes = Array.from({ length: program.settings.beats * 2 }, (_, i) => time + i * beat);
-    const duckTimes = notes.filter((n) => n.drum === "kick").map((n) => time + n.start * seconds);
 
     this.tuneBloom(program, bar, time);
     this.applyMix(STYLES[program.settings.style]?.mix ?? "clean", time);
-    for (const n of notes) {
-      playNote(this.ctx, this.buses, {
-        midi: n.midi,
-        drum: n.drum,
-        time: time + n.start * seconds,
-        seconds: n.dur * seconds,
-        beatTimes,
-        duckTimes,
-        props: n.props,
-      });
-    }
+    this.enqueue(notes, time, seconds, program);
     const { key, chordName } = harmonyAt(program.settings, bar);
     this.bars = [...this.bars, { bar, time, seconds, notes, key: key.name, chord: chordName, program }].slice(-KEEP_BARS);
     this.nextBar += 1;
@@ -167,6 +207,7 @@ export class Engine {
 
   halt(at) {
     clearInterval(this.timer);
+    this.queue = [];
     this.playing = false;
     this.stopping = false;
     this.pending = null;
