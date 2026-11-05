@@ -8,6 +8,7 @@ const real = createRequire(import.meta.url)("node-web-audio-api");
 class Silent extends real.AudioContext {
   constructor(o = {}) { super({ ...o, sinkId: { type: "none" } }); }
 }
+const MOST_WAIT_MS = 3000;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const program = (gain, tempo = 120) => compile(`tempo ${tempo}\na: 0 0 0 0 0 0 0 0 > triangle > gain ${gain}\n`).program;
 
@@ -50,13 +51,16 @@ test("a chord change reaches notes that haven't played yet", async () => {
   await engine.ctx.close();
 });
 
-test("a key change shows straight away, not at the next bar", async () => {
+test("a key change shows straight away, not at the next bar", async (t) => {
   const song = (key) => compile(`tempo 120\nkey ${key}\na: 0 0 0 0 > free\n`).program;
   const engine = new Engine({ AudioContext: Silent });
+  t.after(async () => {
+    engine.stop({ now: true });
+    await engine.ctx.close();
+  });
   await engine.play(song("c major"));
-  await wait(300);
+  for (let waited = 0; !engine.position() && waited < MOST_WAIT_MS; waited += 20) await wait(20);
+  assert.ok(engine.position(), "the first bar has started");
   engine.live(song("a minor"));
   assert.equal(engine.position().key, "a minor");
-  engine.stop({ now: true });
-  await engine.ctx.close();
 });

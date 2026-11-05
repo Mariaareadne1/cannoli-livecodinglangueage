@@ -295,6 +295,8 @@ body.resizing iframe { pointer-events: none; }
   position: absolute;
   z-index: 9;
   max-width: calc(100% - 16px);
+  max-height: calc(100% - 8px);
+  overflow-y: auto;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -363,6 +365,15 @@ body.resizing iframe { pointer-events: none; }
 .ed-groove.on strong, .ed-groove.on .ed-sound-fits { color: var(--bg); }
 .ed-groove.on .ed-groove-steps i { border-color: var(--bg); }
 .ed-groove.on .ed-groove-steps i.hit { background: var(--bg); }
+.ed-verb-list { display: grid; gap: 4px; margin: 8px 0 6px; }
+.ed-verb-group { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.ed-verb-group-name { width: 62px; color: var(--ink-faint); font-size: 11px; }
+.ed-verb { padding: 3px 8px; border: 1px solid var(--ink-faint); border-radius: 4px; background: var(--bg); color: var(--ink); font: inherit; font-size: 11px; cursor: pointer; }
+.ed-verb:hover { border-color: var(--accent); }
+.ed-verb:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ed-verb.on { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+.ed-picker .ed-verb-doc { min-height: 1.4em; margin: 0 0 6px; color: var(--ink-dim); }
+.ed-verb-chance { margin: 8px 0; }
 .ed-key-note { min-width: 34px; }
 .ed-key-note.chosen { background: var(--accent); border-color: var(--accent); }
 .ed-key-note.chosen strong { color: var(--bg); }

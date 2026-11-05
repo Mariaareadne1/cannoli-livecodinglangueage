@@ -19,6 +19,16 @@ The logic is already shared and tested in `src/editor/pickers.js`
 - [ ] `esc` closes the grid for that line until the line changes
 - [ ] Add it to the editor keys in the guide's reference (`cli/guide-text.js`) and the README
 
+## Verb menu
+
+The logic is in `src/editor/verb-picker.js` (`verbPicker`, `verbGroups`, `applyVerb`, `applyChance`, `withVerbOnly`), and `pickerAt` already returns
+`kind: "verb"`, with `groups` on the bar picker too. The web version is `drawVerb` and `verbButtons` in `src/editor/editor.js`.
+
+- [ ] List the choices with their descriptions, under the bar picker and on their own
+- [ ] Arrow keys and `space`, or a click, to choose
+- [ ] Change the chance on `someCyclesBy`
+- [ ] Play a bar with the verb always on when picked while stopped: see `previewVerb` in `src/app.js`
+
 ## Groove picker
 
 The logic is in `src/editor/groove-picker.js` (`groovePicker`, `grooveList`, `applyGroove`), and `pickerAt` already returns `kind: "groove"`.

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "web": "node scripts/serve.js",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test --test-force-exit tests/*.test.mjs",
     "stage": "node cli/cannoli.js stage",
     "edit": "node cli/cannoli.js edit"
   },

@@ -126,7 +126,7 @@ test("the code it writes fires on exactly the bars you picked", () => {
 });
 
 test("other conditions don't open it", () => {
-  assert.equal(at("lead: 0 2 > when bar > 8 rev"), null);
+  assert.equal(at("lead: 0 2 > when bar > 8 rev").kind, "verb", "the verb menu instead of the bar grid");
   assert.equal(at("lead: 0 2 > high"), null);
 });
 

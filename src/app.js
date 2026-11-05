@@ -51,7 +51,22 @@ const editor = createEditor($("editor"), {
   onSound: previewSound,
   onRing: previewRing,
   onKey: previewKey,
+  onVerb: previewVerb,
 });
+
+/* Picked a verb while stopped: hear one bar of that thread with the verb always on. */
+function previewVerb(thread, text) {
+  if (engine.playing) return;
+  const { errors, program } = compile(text);
+  if (errors.length) return;
+  for (let bar = 0; bar < PREVIEW_SEARCH_BARS; bar++) {
+    const list = renderBar(program, bar).filter((n) => n.thread === thread);
+    if (list.length) {
+      engine.previewBar({ list, settings: program.settings });
+      return;
+    }
+  }
+}
 
 /* Picked a key while stopped: a quick run up its scale. */
 function previewKey(key) {

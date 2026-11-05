@@ -11,8 +11,10 @@ import { melodyPicker, splitBody } from "./melody-grid.js";
 import { chordPicker } from "./chord-picker.js";
 import { soundPicker } from "./sound-picker.js";
 import { ringPicker } from "./euclid-ring.js";
+import { threadOfLine } from "./sound-picker.js";
 import { keyPicker } from "./key-picker.js";
 import { groovePicker, grooveList } from "./groove-picker.js";
+import { verbPicker, verbGroups } from "./verb-picker.js";
 
 const STEPS_PER_BEAT = 4;
 const GROOVE_STEPS = 16;
@@ -65,7 +67,11 @@ export function pickerAt(text, cursor, opts = {}) {
   const groove = groovePicker(line, cursor - line.start, text);
   // a drum line's own beat stays with the beat grid, which offers the grooves too
   if (groove && !(groove.isThreadsPattern && beatPicker(line, text))) return groove;
-  const bars = barPicker(line, cursor - line.start);
+  const bars = barPicker(line, cursor - line.start, text);
+  if (!bars?.inSpan) {
+    const verb = verbPicker(line, cursor - line.start, text);
+    if (verb) return verb;
+  }
   const part = beatPicker(line, text) ?? melodyPicker(line, text, { ...opts, column: cursor - line.start });
   if (bars && part) return bars.inSpan ? bars : part;
   return bars ?? part;
@@ -151,14 +157,14 @@ function smallest(steps) {
 
 /* ---------- the bar picker ---------- */
 
-function barPicker(line, column) {
+function barPicker(line, column, text = "") {
   for (const found of line.code.matchAll(BAR_RE)) {
     const keyword = found[1];
     const at = found.index + found[0].length - keyword.length;
     const parsed = keyword === "when" ? readWhen(line.code, at) : readEvery(line.code, at, keyword);
     if (!parsed) continue;
     return {
-      kind: "bars", bars: parsed.bars, verb: parsed.verb,
+      kind: "bars", bars: parsed.bars, verb: parsed.verb, groups: verbGroups(), thread: threadOfLine(text, line.start),
       inSpan: column >= at && column <= parsed.end,
       line: { ...line, spanStart: line.start + at, spanEnd: line.start + parsed.end },
     };

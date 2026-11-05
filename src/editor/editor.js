@@ -5,6 +5,8 @@
        Shift+Tab to write out the whole line it shows)
      · a grid under drum threads and every/firstOf/lastOf: click
        the beats or bars you want and it writes the code
+     · a verb menu on every, someCycles, when and the like:
+       what happens, each described and played as you pick it
      · a groove picker on beat: every named rhythm with a picture
        of its steps
      · a key picker on the key line: the notes, the modes by mood,
@@ -31,6 +33,7 @@ import { applySound, findSound, addSound, threadOfLine } from "./sound-picker.js
 import { applyRing, ringPattern, ringName } from "./euclid-ring.js";
 import { applyKey, keyDetails, sameNote } from "./key-picker.js";
 import { applyGroove } from "./groove-picker.js";
+import { applyVerb, applyChance, sameVerb, withVerbOnly } from "./verb-picker.js";
 import { applyChords, setChord, addBar, removeBar, slotAtColumn, goodNext, nameOf } from "./chord-picker.js";
 
 const PAD_X = 16;
@@ -50,7 +53,7 @@ const MELODY_MOST_COLUMNS = 32;
  * @param {HTMLElement} root
  * @param {{ value: string, onRun: () => void, onStop: (now: boolean) => void, onInput: (text: string) => void }} opts
  */
-export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {}, onPreview = () => {}, onChord = () => {}, onSound = () => {}, onRing = () => {}, onKey = () => {} }) {
+export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {}, onPreview = () => {}, onChord = () => {}, onSound = () => {}, onRing = () => {}, onKey = () => {}, onVerb = () => {} }) {
   root.classList.add("ed");
   root.innerHTML = `
     <div class="ed-gutter" aria-hidden="true"></div>
@@ -169,7 +172,8 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
 
   function chordLineShowing(cursor) {
     const p = pickerAt(input.value, cursor);
-    return ["chords", "key", "groove"].includes(p?.kind) && lineStartOf(cursor) !== state.pickerDismissed;
+    const showsItAll = ["chords", "key", "groove"].includes(p?.kind) || ((p?.kind === "verb" || p?.kind === "bars") && !p.verb);
+    return showsItAll && lineStartOf(cursor) !== state.pickerDismissed;
   }
 
   /* A blank drum or melody line shows its grid and its ideas together. */
@@ -216,6 +220,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     else if (picker.kind === "euclid") drawRing(picker);
     else if (picker.kind === "key") drawKey(picker);
     else if (picker.kind === "groove") drawGroove(picker);
+    else if (picker.kind === "verb") drawVerb(picker);
     else if (picker.kind === "melody") drawMelody(picker);
     else drawPicker(picker, cursor);
     placePicker(cursor);
@@ -285,6 +290,51 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     pickerBox.querySelector("[data-ring-drawing]").innerHTML = ringSvg(state.picker);
     pickerBox.querySelector("[data-ring-label]").textContent = ringLabel(state.picker);
     onSlide();
+  }
+
+  function verbButtons(picker) {
+    const all = picker.groups.flatMap((group) => group.choices);
+    const current = all.find((c) => sameVerb(picker.verb, c.code));
+    const rows = picker.groups.map((group) => `<div class="ed-verb-group"><span class="ed-verb-group-name">${esc(group.title)}</span>${group.choices.map((c) => {
+      const on = sameVerb(picker.verb, c.code);
+      return `<button type="button" class="ed-verb${on ? " on" : ""}" data-act="verb:${esc(c.code)}" data-doc="${esc(c.doc)}" aria-pressed="${on}" aria-label="${esc(c.code)}: ${esc(c.doc)}" tabindex="-1">${esc(c.code)}</button>`;
+    }).join("")}</div>`).join("");
+    return `<div class="ed-verb-list">${rows}</div><p class="ed-verb-doc" data-verb-doc data-resting="${esc(current?.doc ?? "")}">${esc(current?.doc ?? "")}&nbsp;</p>`;
+  }
+
+  /* The one description line follows whichever choice the mouse or keyboard is on. */
+  function describeVerb(e) {
+    const line = pickerBox.querySelector("[data-verb-doc]");
+    if (!line) return;
+    const doc = e.target.closest?.("[data-doc]")?.dataset.doc;
+    line.textContent = doc ?? line.dataset.resting;
+  }
+  pickerBox.addEventListener("mouseover", describeVerb);
+  pickerBox.addEventListener("focusin", describeVerb);
+
+  function drawVerb(picker) {
+    const hadFocus = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.act ?? "chance" : null;
+    const chance = picker.chance === null ? "" : `<label class="ed-ring-control ed-verb-chance"><span>chance</span>
+      <input type="range" class="ed-picker-range" data-chance min="0" max="1" step="0.01" value="${picker.chance}"/><output data-chance-value>${picker.chance}</output></label>`;
+    setPickerHtml(`<p class="ed-picker-title"><code>${esc(picker.word)}</code>: pick what happens, to hear it and switch</p>${chance}${verbButtons(picker)}
+      <p class="ed-picker-keys">it writes the code on your line · esc closes · ctrl+b to use the keyboard</p>`);
+    pickerBox.hidden = false;
+    if (hadFocus) pickerBox.querySelector(hadFocus === "chance" ? "[data-chance]" : `[data-act="${hadFocus}"]`)?.focus();
+  }
+
+  function chooseVerb(code) {
+    const picker = state.picker;
+    if (picker?.kind !== "verb" && picker?.kind !== "bars") return;
+    const keyboard = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.act : null;
+    const heard = picker.thread ? withVerbOnly(input.value, picker, code) : null;
+    const change = applyVerb(picker, code);
+    replaceRange(change.start, change.end, change.text);
+    const at = change.start + change.text.trimEnd().length;   // stay in the verb, so the menu stays open
+    input.setSelectionRange(at, at);
+    closeCard();
+    onSlide();
+    if (heard) onVerb(picker.thread, heard);
+    if (keyboard) pickerBox.querySelector(`[data-act="${keyboard}"]`)?.focus();
   }
 
   function grooveButtons(grooves, isCurrent) {
@@ -450,6 +500,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     const picker = state.picker;
     const [name, value] = act.split(":");
     if (name === "sound") return chooseSound(value);
+    if (name === "verb") return chooseVerb(value);
     if (name === "groove") return chooseGroove(value);
     if (name === "note") return chooseKey({ note: value });
     if (name === "mode") return chooseKey({ mode: value });
@@ -582,6 +633,16 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
   pickerBox.addEventListener("input", (e) => {
     if (!e.target.matches(".ed-picker-range")) return;
     if (e.target.dataset.ring) return slideRing(e.target);
+    if ("chance" in e.target.dataset) {
+      state.sliding = true;
+      const change = applyChance(state.picker, Number(e.target.value));
+      writeQuietly(change);
+      state.heldCaret = change.start + 1;
+      state.picker = pickerAt(input.value, state.heldCaret) ?? state.picker;
+      pickerBox.querySelector("[data-chance-value]").textContent = e.target.value;
+      onSlide();
+      return;
+    }
     state.sliding = true;
     writeSliderValue(Number(e.target.value));
   });
@@ -604,7 +665,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
       }).join("")}</div>`).join("");
     const title = isBeat
       ? `<strong>${esc(picker.name)}</strong> plays <code>${esc(picker.drum)}</code>: click the steps you want`
-      : `click the bars where <code>${esc(picker.verb || "rev")}</code> plays`;
+      : `click the bars where <code>${esc(picker.verb || "rev")}</code> happens`;
     const focus = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.cell : null;
     const grooveToggle = isBeat && picker.grooves.length ? `<button type="button" class="btn" data-action="grooves" aria-expanded="${state.groovesOpen === lineStartOf(cursor)}">grooves</button>` : "";
     const soundToggle = isBeat && !picker.blank ? '<button type="button" class="btn" data-action="sound">choose a sound</button>' : "";
@@ -612,7 +673,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     const shown = isBeat && state.groovesOpen === lineStartOf(cursor);
     const steps = isBeat ? picker.steps.map((on) => (on ? "x" : ".")).join("") : "";
     const grooveList = shown ? grooveButtons(picker.grooves, (g) => g.steps.map((on) => (on ? "x" : ".")).join("") === steps) : "";
-    setPickerHtml(`<p class="ed-picker-title">${title}</p><div class="ed-picker-cells">${groups}</div>${actions}${grooveList}
+    setPickerHtml(`<p class="ed-picker-title">${title}</p><div class="ed-picker-cells">${groups}</div>${actions}${grooveList}${isBeat ? "" : verbButtons(picker)}
       <p class="ed-picker-keys">it writes the code on your line · ctrl+enter to hear it · esc closes · ctrl+b to use the keyboard</p>`);
     if (focus !== null && focus !== undefined) pickerBox.querySelector(`[data-cell="${focus}"]`)?.focus();
     pickerBox.hidden = false;

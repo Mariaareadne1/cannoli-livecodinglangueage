@@ -21,7 +21,7 @@ export const PROGRESSIONS = {
 };
 const ROMAN = { major: ["I", "ii", "iii", "IV", "V", "vi", "vii"], minor: ["i", "ii", "III", "iv", "v", "VI", "VII"] };
 export const NEXT_CHORD = { 0: [3, 4, 5], 1: [4, 6], 2: [5, 3], 3: [4, 0, 1], 4: [0, 5], 5: [3, 1, 4], 6: [0, 2] };
-const STEP_AFTER = /(?:>|\(|\bevery\s+\S+|\bmaybe\s+\S+|\bsometimes|\belse)\s*$/;
+const STEP_AFTER = /(?:>|\(|\b(?:every|firstOf|lastOf|maybe|someCyclesBy)\s+\S+|\b(?:sometimes|someCycles)|\belse)\s*$/;
 const LINE_STARTERS = [
   { label: "style", insert: "style ", detail: "style rave", doc: "a feel: rave, house, funk or chill. Sets tempo, drums and mix, and what gets suggested" },
   { label: "key", insert: "key d minor", detail: "key d minor", doc: "the key every thread shares" },
