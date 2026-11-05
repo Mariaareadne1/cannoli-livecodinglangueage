@@ -11,6 +11,7 @@ import { melodyPicker, splitBody } from "./melody-grid.js";
 import { chordPicker } from "./chord-picker.js";
 import { soundPicker } from "./sound-picker.js";
 import { ringPicker } from "./euclid-ring.js";
+import { keyPicker } from "./key-picker.js";
 
 const STEPS_PER_BEAT = 4;
 const BARS = 16;
@@ -51,6 +52,8 @@ export function pickerAt(text, cursor, opts = {}) {
   if (/^\s*#/.test(line.code)) return null;
   const chords = chordPicker(line, text);
   if (chords) return chords;
+  const key = keyPicker(line);
+  if (key) return key;
   const sound = soundPicker(line, cursor - line.start, text);
   if (sound) return sound;
   const ring = ringPicker(line, cursor - line.start);

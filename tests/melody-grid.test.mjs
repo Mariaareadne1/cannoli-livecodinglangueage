@@ -95,7 +95,7 @@ test("melodic threads and variables open it; drums and other patterns don't", ()
   assert.equal(pickerAt("kick: 0 . 0 . > bd", 7).kind, "beat");
   assert.equal(pickerAt("lead: run 8 > bell", 7), null);
   assert.equal(pickerAt("speed = 2", 9), null, "a lone number is a value, not a melody");
-  assert.equal(pickerAt("key d minor", 5), null);
+  assert.equal(pickerAt("key d minor", 5).kind, "key");
 });
 
 test("a blank melodic part opens it, but not a part that isn't a melody", () => {

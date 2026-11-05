@@ -350,6 +350,9 @@ body.resizing iframe { pointer-events: none; }
 .ed-ring-control { display: grid; grid-template-columns: 3.4em 1fr 2em; align-items: center; gap: 8px; color: var(--ink-dim); }
 .ed-ring-control input { width: 100%; min-width: 0; accent-color: var(--accent); }
 .ed-ring-control output { color: var(--ink); font-weight: 600; text-align: right; }
+.ed-key-note { min-width: 34px; }
+.ed-key-note.chosen { background: var(--accent); border-color: var(--accent); }
+.ed-key-note.chosen strong { color: var(--bg); }
 .ed-sounds { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 3px; margin: 6px 0 10px; min-width: 420px; }
 .ed-sound { display: grid; gap: 1px; padding: 4px 8px; border: 1px solid var(--ink-faint); border-radius: 4px; background: var(--bg); color: var(--ink-dim); font: inherit; font-size: 11px; text-align: left; cursor: pointer; }
 .ed-sound strong { color: var(--ink); font-size: 12px; font-weight: 600; }

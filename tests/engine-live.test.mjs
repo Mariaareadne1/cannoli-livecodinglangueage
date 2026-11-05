@@ -49,3 +49,14 @@ test("a chord change reaches notes that haven't played yet", async () => {
   engine.stop({ now: true });
   await engine.ctx.close();
 });
+
+test("a key change shows straight away, not at the next bar", async () => {
+  const song = (key) => compile(`tempo 120\nkey ${key}\na: 0 0 0 0 > free\n`).program;
+  const engine = new Engine({ AudioContext: Silent });
+  await engine.play(song("c major"));
+  await wait(300);
+  engine.live(song("a minor"));
+  assert.equal(engine.position().key, "a minor");
+  engine.stop({ now: true });
+  await engine.ctx.close();
+});

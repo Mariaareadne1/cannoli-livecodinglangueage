@@ -5,6 +5,8 @@
        Shift+Tab to write out the whole line it shows)
      · a grid under drum threads and every/firstOf/lastOf: click
        the beats or bars you want and it writes the code
+     · a key picker on the key line: the notes, the modes by mood,
+       and the scale and chords you'd get
      · a ring on euclid: sliders for hits, steps and rotation,
        with the rhythm drawn as a circle
      · a sound picker on sound words: every sound, described,
@@ -25,6 +27,7 @@ import { pickerAt, applyBeat, applyBars, applySlider, addSlider } from "./picker
 import { applyMelody, toggleNote, holdNote, rowsFor } from "./melody-grid.js";
 import { applySound, findSound, addSound, threadOfLine } from "./sound-picker.js";
 import { applyRing, ringPattern, ringName } from "./euclid-ring.js";
+import { applyKey, keyDetails, sameNote } from "./key-picker.js";
 import { applyChords, setChord, addBar, removeBar, slotAtColumn, goodNext, nameOf } from "./chord-picker.js";
 
 const PAD_X = 16;
@@ -44,7 +47,7 @@ const MELODY_MOST_COLUMNS = 32;
  * @param {HTMLElement} root
  * @param {{ value: string, onRun: () => void, onStop: (now: boolean) => void, onInput: (text: string) => void }} opts
  */
-export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {}, onPreview = () => {}, onChord = () => {}, onSound = () => {}, onRing = () => {} }) {
+export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {}, onPreview = () => {}, onChord = () => {}, onSound = () => {}, onRing = () => {}, onKey = () => {} }) {
   root.classList.add("ed");
   root.innerHTML = `
     <div class="ed-gutter" aria-hidden="true"></div>
@@ -119,7 +122,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
   function suggest(force = false) {
     const cursor = input.selectionStart;
     if (cursor !== input.selectionEnd) return closeCard();
-    // the chord picker already shows everything the card would
+    // the chord and key pickers already show everything the card would
     if (!force && chordLineShowing(cursor)) return closeCard();
     const result = complete(input.value, cursor, state.symbols, { force });
     if (result.items.length === 0) return closeCard();
@@ -163,7 +166,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
 
   function chordLineShowing(cursor) {
     const p = pickerAt(input.value, cursor);
-    return p?.kind === "chords" && lineStartOf(cursor) !== state.pickerDismissed;
+    return (p?.kind === "chords" || p?.kind === "key") && lineStartOf(cursor) !== state.pickerDismissed;
   }
 
   /* A blank drum or melody line shows its grid and its ideas together. */
@@ -208,6 +211,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     else if (picker.kind === "chords") drawChords(picker, cursor);
     else if (picker.kind === "sound") drawSound(picker);
     else if (picker.kind === "euclid") drawRing(picker);
+    else if (picker.kind === "key") drawKey(picker);
     else if (picker.kind === "melody") drawMelody(picker);
     else drawPicker(picker, cursor);
     placePicker(cursor);
@@ -277,6 +281,42 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     pickerBox.querySelector("[data-ring-drawing]").innerHTML = ringSvg(state.picker);
     pickerBox.querySelector("[data-ring-label]").textContent = ringLabel(state.picker);
     onSlide();
+  }
+
+  function drawKey(picker) {
+    const focus = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.act : null;
+    const details = keyDetails(picker);
+    const notes = picker.notes.map((n) => {
+      const on = sameNote(n.name, picker.note);
+      return `<button type="button" class="ed-chord ed-key-note${on ? " chosen" : ""}" data-act="note:${esc(n.name)}" aria-pressed="${on}" tabindex="-1"><strong>${esc(n.label)}</strong></button>`;
+    }).join("");
+    const modes = picker.modes.map((m) => {
+      const on = m.name === picker.mode;
+      return `<button type="button" class="ed-sound${on ? " on" : ""}" data-act="mode:${esc(m.name)}" aria-pressed="${on}" tabindex="-1"><strong>${esc(m.name)}</strong><span>${esc(m.doc)}</span></button>`;
+    }).join("");
+    setPickerHtml(`<p class="ed-picker-title">the home note</p>
+      <div class="ed-chord-row">${notes}</div>
+      <p class="ed-picker-title">the mood, brightest to darkest</p>
+      <div class="ed-sounds">${modes}</div>
+      <p class="ed-picker-title">notes <strong>${esc(details.scale.join(" "))}</strong></p>
+      <p class="ed-picker-title">chords <strong>${esc(details.chords.join(" "))}</strong></p>
+      <p class="ed-picker-keys">your numbers and numerals stay the same: every part moves to the new key · esc closes · ctrl+b to use the keyboard</p>`);
+    pickerBox.hidden = false;
+    if (focus) pickerBox.querySelector(`[data-act="${focus}"]`)?.focus();
+  }
+
+  function chooseKey(choice) {
+    const picker = state.picker;
+    if (picker?.kind !== "key") return;
+    const keyboard = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.act : null;
+    const change = applyKey(picker, choice);
+    replaceRange(change.start, change.end, change.text);
+    const end = change.start + change.text.length;
+    input.setSelectionRange(end, end);
+    closeCard();
+    onSlide();
+    onKey(change.text.trim());
+    if (keyboard) pickerBox.querySelector(`[data-act="${keyboard}"]`)?.focus();
   }
 
   function drawSound(picker) {
@@ -371,6 +411,8 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     const picker = state.picker;
     const [name, value] = act.split(":");
     if (name === "sound") return chooseSound(value);
+    if (name === "note") return chooseKey({ note: value });
+    if (name === "mode") return chooseKey({ mode: value });
     if (picker?.kind !== "chords") return;
     const cursor = input.selectionStart;
     const slot = chordSlot(picker, cursor);

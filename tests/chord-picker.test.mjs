@@ -52,7 +52,7 @@ test("the chords line opens it; other lines and unknown words don't", () => {
   assert.ok(at("chords ").blank);
   assert.equal(at("chords i xx"), null);
   assert.equal(at("# chords i VI"), null);
-  assert.equal(at("key d minor"), null);
+  assert.equal(at("key d minor").kind, "key");
 });
 
 test("choosing rewrites only the chords and keeps the rest of the line", () => {

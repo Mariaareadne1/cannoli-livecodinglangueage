@@ -19,6 +19,15 @@ The logic is already shared and tested in `src/editor/pickers.js`
 - [ ] `esc` closes the grid for that line until the line changes
 - [ ] Add it to the editor keys in the guide's reference (`cli/guide-text.js`) and the README
 
+## Key picker
+
+The logic is in `src/editor/key-picker.js` (`keyPicker`, `applyKey`, `keyDetails`), and `pickerAt` already returns `kind: "key"`.
+The web version is `drawKey` in `src/editor/editor.js`.
+
+- [ ] Draw the notes, the modes with their moods, and the resulting notes and chords
+- [ ] Arrow keys and `space`, or a click, to choose
+- [ ] Play a run up the scale when picked while stopped: see `previewKey` in `src/app.js`
+
 ## Euclid ring
 
 The logic is in `src/editor/euclid-ring.js` (`ringPicker`, `ringPattern`, `ringName`, `applyRing`), and `pickerAt` already returns

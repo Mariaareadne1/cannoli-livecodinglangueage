@@ -23,6 +23,7 @@ const OLD_STORE_CODES = ["pretzel-code", "loom-code"];   // saved under the lang
 const STORE_PREFS = "cannoli-prefs";
 const LINT_DELAY_MS = 120;
 const CHORD_PREVIEW_S = 0.8;
+const SCALE_RUN_TEMPO = 200;
 const PREVIEW_SEARCH_BARS = 32;
 const THREAD_COLORS = ["--t0", "--t1", "--t2", "--t3", "--t4", "--t5"];
 
@@ -49,7 +50,15 @@ const editor = createEditor($("editor"), {
   onChord: previewChord,
   onSound: previewSound,
   onRing: previewRing,
+  onKey: previewKey,
 });
+
+/* Picked a key while stopped: a quick run up its scale. */
+function previewKey(key) {
+  if (engine.playing) return;
+  const { errors, program } = compile(`key ${key}\ntempo ${SCALE_RUN_TEMPO}\nnote: 0 1 2 3 4 5 6 7 > pluck > free\n`);
+  if (!errors.length) engine.previewBar({ list: renderBar(program, 0), settings: program.settings });
+}
 
 /* Let go of a ring's slider while stopped: play one bar of that thread. */
 function previewRing(thread) {

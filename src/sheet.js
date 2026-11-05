@@ -194,6 +194,7 @@ function grids() {
     [inline("kick: "), "a row of steps split into beats. Also for snare, hats, clap, drums and any thread playing a drum.", inline("kick: 0 . . 0 . . 0 . > bd")],
     [inline("lead: 0 2 4 > every "), "16 bars in fours: click the ones you want. Also for firstOf, lastOf and when bar % 4 == 1.", inline("lead: 0 2 4 > every 4 rev")],
     [inline("lead: 0 2 4 > gain 0.5"), "with the cursor on it, a slider from 0 to 1. While playing, you hear it as you drag. Also for pan, bright, fast, slow, ply, clip, tempo, swing, the effects and more.", inline("lead: 0 2 4 > gain slider(0.5, 0, 1)")],
+    [inline("key d minor"), "with the cursor on the line, the twelve notes and the modes by mood, with the notes and chords you'd get. Your numbers stay the same: every part moves together.", inline("key f# dorian")],
     [inline("kick: euclid 3 8 > bd"), "with the cursor on euclid, a circle with sliders for hits, steps and rotation, and a hand that follows the music.", inline("kick: euclidRot 3 8 2 > bd")],
     [inline("lead: 0 2 > triangle"), "with the cursor in the sound word, every sound with a description, your style's favourites first. Click one to hear it and switch. The grids have a choose a sound button too.", inline("lead: 0 2 > pluck")],
     ["the <strong>timeline</strong> tab", "a row per thread and a column per bar: click or drag along a row to choose when each part plays. The last bar carries on.", inline("hats: 0 0 > hh > when bar <= 8 hush")],

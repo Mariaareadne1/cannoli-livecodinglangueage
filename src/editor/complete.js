@@ -14,7 +14,7 @@ import { MODES, chordDegree } from "../core/harmony.js";
 import { STYLES, STYLE_NAMES, BEATS } from "../core/styles.js";
 import { threadIdeas } from "./thread-ideas.js";
 
-const NOTE_NAMES = ["c", "c#", "d", "eb", "e", "f", "f#", "g", "ab", "a", "bb", "b"];
+export const NOTE_NAMES = ["c", "c#", "d", "eb", "e", "f", "f#", "g", "ab", "a", "bb", "b"];
 export const PROGRESSIONS = {
   major: [["I V vi IV", "the pop progression"], ["I vi IV V", "fifties doo-wop"], ["ii V I I", "jazz cadence"], ["I IV V IV", "rock and roll"], ["vi IV I V", "hopeful, starts sad"]],
   minor: [["i VI III VII", "epic, cinematic"], ["i iv v i", "classic minor"], ["i VII VI VII", "rolling, folky"], ["i iv VII III", "dark pop"], ["i VI iv V", "dramatic, pulls home"]],
@@ -171,7 +171,7 @@ function styleFirst(items, favourites = [], style = "") {
   return [...picked, ...items.filter((i) => !favourites.includes(i.label))];
 }
 
-const MODE_DOCS = {
+export const MODE_DOCS = {
   major: "bright and settled", minor: "dark and emotional", dorian: "minor, but hopeful",
   phrygian: "dark, Spanish-tinged", lydian: "dreamy and floating", mixolydian: "bluesy major",
   locrian: "unstable and tense", harmonic: "minor with a dramatic leading note",

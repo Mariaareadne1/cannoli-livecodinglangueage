@@ -103,7 +103,9 @@ export class Engine {
       if (b.time + b.seconds <= now) return b;
       const notes = safeRender(program, b.bar);
       this.enqueue(notes, b.time, b.seconds, program);
-      return { ...b, notes, program };
+      this.tuneBloom(program, b.bar, Math.max(now, b.time));
+      const { key, chordName } = harmonyAt(program.settings, b.bar);
+      return { ...b, notes, program, key: key.name, chord: chordName };
     });
     this.emit();
   }
