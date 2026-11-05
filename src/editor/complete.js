@@ -5,13 +5,14 @@
    with a one-line explanation for the suggestion card.
    A suggestion can also carry a `fill`: the rest of the line,
    fully written out (`preview` is the line it makes). On a blank
-   — "kick: ", "def lift n = ", "theme = " — every suggestion is
-   a whole line.
+   — "kick:", "def lift n = ", "theme = " — every suggestion is
+   a whole line (thread-ideas.js has the ones for each kind of part).
    ============================================================ */
 
 import { VERBS, GENERATORS } from "../core/verbs.js";
 import { MODES, chordDegree } from "../core/harmony.js";
 import { STYLES, STYLE_NAMES, BEATS } from "../core/styles.js";
+import { threadIdeas } from "./thread-ideas.js";
 
 const NOTE_NAMES = ["c", "c#", "d", "eb", "e", "f", "f#", "g", "ab", "a", "bb", "b"];
 const PROGRESSIONS = {
@@ -50,7 +51,7 @@ export function complete(text, cursor, symbols = {}, { force = false } = {}) {
 
   const lineEnd = text.indexOf("\n", cursor) < 0 ? text.length : text.indexOf("\n", cursor);
 
-  const blank = word ? null : blankSuggestions(head, symbols);
+  const blank = word ? null : blankSuggestions(head, symbols, text);
   if (blank) return { from, to: cursor, lineEnd, items: blank.map((s) => ({ ...s, detail: head + s.insert })) };
 
   const items = candidates(head, statement, symbols, force || word.length > 0);
@@ -63,31 +64,15 @@ export function complete(text, cursor, symbols = {}, { force = false } = {}) {
 
 const MOTIF = "0 2 4 _ 6 4";
 
-function blankSuggestions(head, symbols) {
+function blankSuggestions(head, symbols, text) {
   const def = head.match(/^def\s+[A-Za-z]\w*((?:\s+[A-Za-z]\w*)*)\s*=\s$/);
   if (def) return fills(defBodies(def[1].trim().split(/\s+/).filter(Boolean)));
-  const named = head.match(/^([A-Za-z]\w*)\s*([:=])\s$/);
+  const named = head.match(/^([A-Za-z]\w*)\s*(:\s*|=\s)$/);
   if (!named || /^(key|tempo|chords|beats|swing|style)$/.test(named[1])) return null;
-  return fills(named[2] === "=" ? VARIABLE_BODIES : threadBodies(named[1], symbols));
-}
-
-/* Thread bodies, the ones that suit the thread's name first. */
-function threadBodies(name, symbols) {
-  const groove = STYLES[symbols.style]?.beats?.[0] ?? "fourfloor";
-  const melody = symbols.vars?.[0] ?? MOTIF;
-  const bodies = [
-    ["kick", `beat ${groove} > bd`, "a kick on the style's main groove"],
-    ["snare", "beat backbeat > sd", "a snare on beats 2 and 4"],
-    ["clap", "beat backbeat > cp", "a clap on beats 2 and 4"],
-    ["hat", "euclid 7 16 > hh > gain 0.4", "quiet, busy hats spread across the bar"],
-    ["bass", "0 . 0 4 > low > sawtooth > pump", "a bassline that breathes with the kick"],
-    ["pad", "chord > slow 2 > pad > bloom", "the chords, held for two bars, ringing in the key"],
-    ["lead", `${melody} > every 4 rev > high > triangle`, "a melody up high, backwards every 4th bar"],
-    ["arp", "chord > arp > fast 2 > high > pluck", "the chord, one note at a time"],
-  ];
-  const lower = name.toLowerCase();
-  const fits = ([key]) => lower.startsWith(key) || key.startsWith(lower);
-  return [...bodies.filter(fits), ...bodies.filter((b) => !fits(b))].map(([, body, doc]) => [body, doc]);
+  if (named[2].startsWith("=")) return fills(VARIABLE_BODIES);
+  // right after the colon, the line it writes brings its own space
+  const gap = head.endsWith(":") ? " " : "";
+  return fills(threadIdeas(named[1], text, symbols)).map((s) => ({ ...s, insert: gap + s.insert }));
 }
 
 function defBodies([param]) {
