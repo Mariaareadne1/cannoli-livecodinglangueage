@@ -19,6 +19,16 @@ The logic is already shared and tested in `src/editor/pickers.js`
 - [ ] `esc` closes the grid for that line until the line changes
 - [ ] Add it to the editor keys in the guide's reference (`cli/guide-text.js`) and the README
 
+## Groove picker
+
+The logic is in `src/editor/groove-picker.js` (`groovePicker`, `grooveList`, `applyGroove`), and `pickerAt` already returns `kind: "groove"`.
+The web version is `drawGroove` in `src/editor/editor.js`.
+
+- [ ] List the grooves with their steps as `x...x...`, the style's first
+- [ ] Arrow keys and `space`, or a click, to choose
+- [ ] A way to open the list from the beat grid
+- [ ] Play a bar when picked while stopped: see `previewRing` in `src/app.js`
+
 ## Key picker
 
 The logic is in `src/editor/key-picker.js` (`keyPicker`, `applyKey`, `keyDetails`), and `pickerAt` already returns `kind: "key"`.
