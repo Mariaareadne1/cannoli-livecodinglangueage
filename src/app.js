@@ -7,6 +7,7 @@
 import { compile } from "./lang/compile.js";
 import { Engine } from "./audio/engine.js";
 import { findSliders, applySlider } from "./editor/pickers.js";
+import { renderBar } from "./core/render.js";
 import { createEditor } from "./editor/editor.js";
 import { EXAMPLES } from "./examples.js";
 import { codeFromUrl } from "./share.js";
@@ -41,7 +42,18 @@ const editor = createEditor($("editor"), {
     state.lintTimer = setTimeout(lint, LINT_DELAY_MS);
   },
   onSlide: playLive,
+  onPreview: previewNote,
 });
+
+/* Clicked a note while stopped: play just that note, with the line's own sound. */
+function previewNote(step, picker) {
+  if (engine.playing) return;   // while playing, the change is heard in the music itself
+  const after = picker.line.code.slice(picker.line.patternEnd - picker.line.start);
+  const setup = editor.value.split("\n").filter((l) => /^(key|chords|style)\b/.test(l)).join("\n");
+  const { errors, program } = compile(`${setup}\nnote: ${step} ${after.trim().startsWith(">") ? after.trim() : ""} > free\n`);
+  const note = errors.length ? null : renderBar(program, 0)[0];
+  if (note && !note.drum) engine.preview(note.midi, note.props);
+}
 
 /* A slider moved: while playing, the rest of the bar follows it straight away. */
 function playLive() {

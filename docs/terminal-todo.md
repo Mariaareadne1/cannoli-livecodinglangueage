@@ -19,6 +19,17 @@ The logic is already shared and tested in `src/editor/pickers.js`
 - [ ] `esc` closes the grid for that line until the line changes
 - [ ] Add it to the editor keys in the guide's reference (`cli/guide-text.js`) and the README
 
+## Melody grid
+
+The logic is in `src/editor/melody-grid.js` (`melodyPicker`, `rowsFor`, `toggleNote`, `holdNote`, `finer`, `applyMelody`),
+and `pickerAt` already returns `kind: "melody"`. The web version is `drawMelody` in `src/editor/editor.js`.
+
+- [ ] Draw the rows and cells under the line, with the note names (it needs room: 10 rows or more)
+- [ ] Click a cell, and drag right to hold, with mouse reporting on while the grid shows
+- [ ] Keyboard: arrows in all four directions, `space` to toggle
+- [ ] "More steps" (`minColumns`)
+- [ ] Play a note when it's added while stopped: `engine.preview` already works there; see `previewNote` in `src/app.js`
+
 ## Sliders
 
 The logic is in `src/editor/pickers.js` (`applySlider`, `addSlider`, `findSliders`), and the engine's

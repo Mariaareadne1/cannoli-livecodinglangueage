@@ -5,6 +5,8 @@
        Shift+Tab to write out the whole line it shows)
      · a grid under drum threads and every/firstOf/lastOf: click
        the beats or bars you want and it writes the code
+     · a melody grid on patterns of scale steps: click notes,
+       drag to hold them
      · a slider on words with a number range: drag it to hear the
        change, then keep the number or put a slider in the code
      · hover on an underlined problem → what's wrong + a Fix button
@@ -14,17 +16,20 @@
 import { highlight } from "./highlight.js";
 import { complete } from "./complete.js";
 import { pickerAt, applyBeat, applyBars, applySlider, addSlider } from "./pickers.js";
+import { applyMelody, toggleNote, holdNote, rowsFor } from "./melody-grid.js";
 
 const PAD_X = 16;
 const PAD_Y = 14;
 
 const PICKER_BARS_PER_GROUP = 4;
+const MELODY_BEATS = 4;
+const MELODY_MOST_COLUMNS = 32;
 
 /**
  * @param {HTMLElement} root
  * @param {{ value: string, onRun: () => void, onStop: (now: boolean) => void, onInput: (text: string) => void }} opts
  */
-export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {} }) {
+export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {}, onPreview = () => {} }) {
   root.classList.add("ed");
   root.innerHTML = `
     <div class="ed-gutter" aria-hidden="true"></div>
@@ -47,7 +52,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
   const pickerBox = root.querySelector(".ed-picker");
   const tip = root.querySelector(".ed-tip");
 
-  const state = { problems: [], active: new Set(), symbols: {}, suggestions: null, selected: 0, tipProblem: null, errorLine: 0, picker: null, pickerDismissed: null, sliding: false, heldCaret: null };
+  const state = { problems: [], active: new Set(), symbols: {}, suggestions: null, selected: 0, tipProblem: null, errorLine: 0, picker: null, pickerDismissed: null, sliding: false, heldCaret: null, melodyDrag: null, finerGrid: null };
   input.value = value;
   input.setSelectionRange(0, 0);   // start at the top-left, not scrolled to the end
 
@@ -104,7 +109,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     state.suggestions = result;
     state.selected = 0;
     // a blank drum thread shows its grid and its ideas together
-    if (blankDrumThread(cursor)) updatePicker();
+    if (blankWithGrid(cursor)) updatePicker();
     else hidePicker();
     drawCard();
   }
@@ -139,15 +144,14 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
 
   /* ---------- the beat grid and bar picker ---------- */
 
-  function blankDrumThread(cursor) {
+  /* A blank drum or melody line shows its grid and its ideas together. */
+  function blankWithGrid(cursor) {
     const p = pickerAt(input.value, cursor);
-    return p?.kind === "beat" && p.blank && currentLine(cursor) !== state.pickerDismissed;
+    return Boolean(p?.blank) && lineStartOf(cursor) !== state.pickerDismissed;
   }
 
-  function currentLine(cursor) {
-    const start = input.value.lastIndexOf("\n", cursor - 1) + 1;
-    const end = input.value.indexOf("\n", cursor);
-    return input.value.slice(start, end < 0 ? input.value.length : end);
+  function lineStartOf(cursor) {
+    return input.value.lastIndexOf("\n", cursor - 1) + 1;
   }
 
   function hidePicker() {
@@ -171,17 +175,85 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     if (state.sliding) return;   // redrawing would drop the slider out of the player's hand
     const cursor = caret();
     const focused = document.activeElement === input || pickerBox.contains(document.activeElement);
-    const open = !state.suggestions || blankDrumThread(cursor);
+    // esc keeps it closed until the caret leaves the line
+    if (state.pickerDismissed !== null && lineStartOf(cursor) !== state.pickerDismissed) state.pickerDismissed = null;
+    const open = !state.suggestions || blankWithGrid(cursor);
     const noSelection = state.heldCaret !== null || input.selectionStart === input.selectionEnd;
-    const picker = focused && open && noSelection ? pickerAt(input.value, cursor) : null;
-    if (!picker || currentLine(cursor) === state.pickerDismissed) return hidePicker();
+    const picker = focused && open && noSelection ? pickerAt(input.value, cursor, gridOptions(cursor)) : null;
+    if (!picker || lineStartOf(cursor) === state.pickerDismissed) return hidePicker();
     state.picker = picker;
-    if (picker.kind === "slider") {
-      drawSlider(picker);
-      placePicker(cursor);
-    } else {
-      drawPicker(picker, cursor);
-    }
+    if (picker.kind === "slider") drawSlider(picker);
+    else if (picker.kind === "melody") drawMelody(picker);
+    else drawPicker(picker, cursor);
+    placePicker(cursor);
+  }
+
+  /* A melody grid made finer stays that way until the caret leaves the line. */
+  function gridOptions(cursor) {
+    const line = lineStartOf(cursor);
+    if (state.finerGrid?.line !== line) state.finerGrid = null;
+    return { minColumns: state.finerGrid?.columns ?? 0 };
+  }
+
+  function drawMelody(picker) {
+    const { cells } = picker;
+    const rows = rowsFor(cells, input.value);
+    const focus = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.melody : null;
+    const perBeat = cells.length % MELODY_BEATS === 0 ? cells.length / MELODY_BEATS : cells.length;
+    const sounding = (column) => {
+      for (let i = column; i >= 0; i--) if (Array.isArray(cells[i])) return cells[i];
+      return [];
+    };
+    const body = rows.map((row, r) => {
+      const buttons = cells.map((cell, c) => {
+        const on = Array.isArray(cell) && cell.includes(row.step);
+        const held = cell === "hold" && sounding(c).includes(row.step);
+        const state_ = on ? " on" : held ? " held" : "";
+        return `<button type="button" class="ed-melody-cell${state_}${c > 0 && c % perBeat === 0 ? " beat" : ""}" data-melody="${r}:${c}" data-step="${row.step}" data-column="${c}" aria-pressed="${on || held}" aria-label="${row.note}, step ${c + 1} of ${cells.length}" tabindex="-1"></button>`;
+      }).join("");
+      return `<div class="ed-melody-row${row.home ? " home" : ""}"><span class="ed-melody-note">${row.note}</span><span class="ed-melody-step">${row.step}</span>${buttons}</div>`;
+    }).join("");
+    setPickerHtml(`<p class="ed-picker-title"><strong>${esc(picker.name)}</strong>: click notes, drag right to hold them</p>
+      <div class="ed-melody">${body}</div>
+      <div class="ed-picker-actions"><button type="button" class="btn" data-action="finer">more steps</button></div>
+      <p class="ed-picker-keys">notes on the beat lock to the current chord (add &gt; free to turn that off) · esc closes · ctrl+b to use the keyboard</p>`);
+    pickerBox.hidden = false;
+    if (focus) pickerBox.querySelector(`[data-melody="${focus}"]`)?.focus();
+  }
+
+  /* Write the grid into the code, keeping the caret on the line it was on. */
+  function writeMelody(cells) {
+    const picker = state.picker;
+    const cursor = input.selectionStart;
+    const change = applyMelody(picker, cells);
+    const growth = change.text.length - (change.end - change.start);
+    const sameLine = picker.line.start === lineStartOf(cursor);
+    const caretAt = !sameLine ? (change.start < cursor ? cursor + growth : cursor)   // editing the variable this line plays
+      : picker.line.blank ? change.start + change.text.length
+        : change.start + 1;
+    const keyboard = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.melody : null;
+    replaceRange(change.start, change.end, change.text);
+    input.setSelectionRange(caretAt, caretAt);
+    closeCard();
+    onSlide();
+    if (keyboard) pickerBox.querySelector(`[data-melody="${keyboard}"]`)?.focus();
+  }
+
+  function clickMelody(step, column) {
+    const picker = state.picker;
+    if (picker?.kind !== "melody") return;
+    const cells = toggleNote(picker.cells, step, column);
+    state.melodyDrag = Array.isArray(cells[column]) && cells[column].includes(step) ? { column, last: column } : null;
+    if (state.melodyDrag && !(Array.isArray(picker.cells[column]) && picker.cells[column].includes(step))) onPreview(step, picker);
+    writeMelody(cells);
+  }
+
+  function dragMelody(column) {
+    const drag = state.melodyDrag;
+    const picker = state.picker;
+    if (!drag || picker?.kind !== "melody" || column === drag.last) return;
+    drag.last = column;
+    writeMelody(holdNote(picker.cells, drag.column, column));
   }
 
   function drawSlider(picker) {
@@ -244,7 +316,6 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
       <p class="ed-picker-keys">it writes the code on your line · ctrl+enter to hear it · esc closes · ctrl+b to use the keyboard</p>`);
     if (focus !== null && focus !== undefined) pickerBox.querySelector(`[data-cell="${focus}"]`)?.focus();
     pickerBox.hidden = false;
-    placePicker(cursor);
   }
 
   function placePicker(cursor) {
@@ -277,9 +348,42 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     e.preventDefault();   // keep the caret in the editor
     const cell = e.target.closest("[data-cell]");
     if (cell) toggleCell(Number(cell.dataset.cell));
+    const melody = e.target.closest("[data-melody]");
+    if (melody) clickMelody(Number(melody.dataset.step), Number(melody.dataset.column));
     const action = e.target.closest("[data-action]")?.dataset.action;
-    if (action) finishSlider(action);
+    if (action === "finer") makeFiner();
+    else if (action) finishSlider(action);
   });
+  pickerBox.addEventListener("mouseover", (e) => {
+    const melody = e.target.closest("[data-melody]");
+    if (melody && e.buttons === 1) dragMelody(Number(melody.dataset.column));
+  });
+  document.addEventListener("mouseup", () => { state.melodyDrag = null; });
+
+  function makeFiner() {
+    const picker = state.picker;
+    if (picker?.kind !== "melody" || picker.cells.length * 2 > MELODY_MOST_COLUMNS) return;
+    const line = lineStartOf(input.selectionStart);
+    state.finerGrid = { line, columns: picker.cells.length * 2 };
+    updatePicker();
+  }
+
+  function melodyKey(e, note) {
+    const [r, c] = note.dataset.melody.split(":").map(Number);
+    const moves = { ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowUp: [-1, 0], ArrowDown: [1, 0] };
+    if (moves[e.key]) {
+      e.preventDefault();
+      const [dr, dc] = moves[e.key];
+      pickerBox.querySelector(`[data-melody="${r + dr}:${c + dc}"]`)?.focus();
+    } else if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      clickMelody(Number(note.dataset.step), Number(note.dataset.column));
+      state.melodyDrag = null;
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      input.focus();
+    }
+  }
 
   function finishSlider(action) {
     state.sliding = false;
@@ -291,7 +395,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
       closeCard();
       return;
     }
-    state.pickerDismissed = currentLine(caret());
+    state.pickerDismissed = lineStartOf(caret());
     input.focus();
     hidePicker();
   }
@@ -302,6 +406,8 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
       input.focus();
       return;
     }
+    const note = e.target.closest("[data-melody]");
+    if (note) return melodyKey(e, note);
     const cell = e.target.closest("[data-cell]");
     if (!cell) return;
     const i = Number(cell.dataset.cell);
@@ -393,7 +499,6 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
   }
 
   input.addEventListener("input", () => {
-    state.pickerDismissed = null;
     render();
     onInput(input.value);
     suggest();
@@ -424,13 +529,13 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
       }
     }
     if (e.key === "Escape" && state.picker) {
-      state.pickerDismissed = currentLine(input.selectionStart);
+      state.pickerDismissed = lineStartOf(input.selectionStart);
       hidePicker();
       return;
     }
     if (mod && e.key === "b" && state.picker) {
       e.preventDefault();
-      pickerBox.querySelector("[data-cell], .ed-picker-range")?.focus();
+      pickerBox.querySelector("[data-cell], [data-melody], .ed-picker-range")?.focus();
       return;
     }
     if (mod && e.key === "Enter") {

@@ -25,7 +25,7 @@ test("a drum thread opens an empty grid, split into beats", () => {
 });
 
 test("other threads don't, unless they play a drum", () => {
-  assert.equal(at("lead: "), null);
+  assert.equal(at("pad: "), null);
   assert.equal(at("lead: 0 2 4 > triangle"), null);
   assert.equal(at("foo: 0 . 0 . > hh").kind, "beat");
 });

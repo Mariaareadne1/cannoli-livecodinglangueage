@@ -7,6 +7,7 @@
 
 import { BEATS } from "../core/styles.js";
 import { DRUM_WORDS, euclidSteps } from "../core/verbs.js";
+import { melodyPicker, splitBody } from "./melody-grid.js";
 
 const STEPS_PER_BEAT = 4;
 const BARS = 16;
@@ -42,15 +43,15 @@ const CLAUSE = String.raw`bar\s*%\s*(\d+)\s*==\s*(\d+)`;
  * @returns {null | { kind: "beat", steps: boolean[], perBeat: number, drum: string, name: string, blank: boolean, line: object }
  *                | { kind: "bars", bars: boolean[], verb: string, line: object }}
  */
-export function pickerAt(text, cursor) {
+export function pickerAt(text, cursor, opts = {}) {
   const line = lineAt(text, cursor);
   if (/^\s*#/.test(line.code)) return null;
   const slider = sliderAt(line, cursor - line.start);
   if (slider) return slider;
   const bars = barPicker(line, cursor - line.start);
-  const beat = beatPicker(line, text);
-  if (bars && beat) return bars.inSpan ? bars : beat;
-  return bars ?? beat;
+  const part = beatPicker(line, text) ?? melodyPicker(line, text, { ...opts, column: cursor - line.start });
+  if (bars && part) return bars.inSpan ? bars : part;
+  return bars ?? part;
 }
 
 function lineAt(text, cursor) {
@@ -80,17 +81,6 @@ function beatPicker(line, text) {
     kind: "beat", steps, perBeat: STEPS_PER_BEAT, drum: drumInChain ?? drum, name, blank: pattern === "",
     line: { ...line, bodyStart: line.start + name.length + 1, chain, hasDrum: Boolean(drumInChain) },
   };
-}
-
-/* The pattern, then everything after its first top-level ">". */
-function splitBody(body) {
-  let depth = 0;
-  for (let i = 0; i < body.length; i++) {
-    if (body[i] === "(" || body[i] === "[") depth++;
-    else if (body[i] === ")" || body[i] === "]") depth--;
-    else if (body[i] === ">" && depth === 0) return { pattern: body.slice(0, i).trim(), chain: body.slice(i + 1).trim() };
-  }
-  return { pattern: body.trim(), chain: "" };
 }
 
 function readSteps(pattern, size) {

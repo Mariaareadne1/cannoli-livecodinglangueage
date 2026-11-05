@@ -194,6 +194,7 @@ function grids() {
     [inline("kick: "), "a row of steps split into beats. Also for snare, hats, clap, drums and any thread playing a drum.", inline("kick: 0 . . 0 . . 0 . > bd")],
     [inline("lead: 0 2 4 > every "), "16 bars in fours: click the ones you want. Also for firstOf, lastOf and when bar % 4 == 1.", inline("lead: 0 2 4 > every 4 rev")],
     [inline("lead: 0 2 4 > gain 0.5"), "with the cursor on it, a slider from 0 to 1. While playing, you hear it as you drag. Also for pan, bright, fast, slow, ply, clip, tempo, swing, the effects and more.", inline("lead: 0 2 4 > gain slider(0.5, 0, 1)")],
+    [inline("lead: 0 2 4 7"), "with the cursor on the notes, a piano roll with the key's note names. Click to add or remove notes, click several in a column for a chord, drag right to hold. Also for variables, and a line that plays a variable edits it.", inline("lead: 0 [2 4] 7 _")],
     [inline("arp:"), "a few whole lines for that kind of part, which fit your style, melody and kick. Any name works, and the rest of the name changes them: slowlead is a slow lead.", inline("arp: chord > arp > fast 2 > high > pluck")],
   ]) + `<p>The code on your line updates with every click, and clicking a line you've already written shows what it plays. It writes the simplest code it can: a named groove when the steps match one, and <code>every</code> or <code>firstOf</code> when the bars are regular. Press <kbd>esc</kbd> to close a grid, or <kbd>ctrl</kbd>+<kbd>b</kbd> to use it from the keyboard.</p>`;
 }

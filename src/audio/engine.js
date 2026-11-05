@@ -18,6 +18,8 @@ import { playNote, saturationCurve, noise, mtof, LOW_CUT_HZ, ROOM_SEND } from ".
 const TICK_MS = 25;
 const LOOKAHEAD_S = 0.3;
 const NOTE_LOOKAHEAD_S = 0.15;   // notes start this early, so a live change is heard this soon
+const PREVIEW_DELAY_S = 0.01;
+const PREVIEW_S = 0.3;
 const HIDDEN_LOOKAHEAD_S = 1.5;  // a background tab's timers only run about once a second
 const START_DELAY_S = 0.08;
 const PHRASE_BARS = 4;
@@ -104,6 +106,16 @@ export class Engine {
       return { ...b, notes, program };
     });
     this.emit();
+  }
+
+  /** Sound one note now, while stopped: for hearing what you just clicked. */
+  async preview(midi, props) {
+    await this.ensureContext();
+    if (this.playing) return;
+    const now = this.ctx.currentTime;
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.setValueAtTime(MASTER_LEVEL, now);
+    playNote(this.ctx, this.buses, { midi, drum: null, time: now + PREVIEW_DELAY_S, seconds: PREVIEW_S, beatTimes: [], duckTimes: [], props });
   }
 
   /** Stop at the next bar line, or right away. */
