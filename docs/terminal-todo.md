@@ -19,6 +19,16 @@ The logic is already shared and tested in `src/editor/pickers.js`
 - [ ] `esc` closes the grid for that line until the line changes
 - [ ] Add it to the editor keys in the guide's reference (`cli/guide-text.js`) and the README
 
+## Chord picker
+
+The logic is in `src/editor/chord-picker.js` (`chordOptions`, `goodNext`, `progressionsFor`, `setChord`, `addBar`, `removeBar`, `applyChords`),
+and `pickerAt` already returns `kind: "chords"`. The web version is `drawChords` in `src/editor/editor.js`.
+
+- [ ] Draw the bar blocks, the seven chords, and the progressions under the `chords` line
+- [ ] Choose with the mouse, or arrows and `space`
+- [ ] `+ bar` and `− bar`
+- [ ] Play a chord when it's picked while stopped: see `previewChord` in `src/app.js`
+
 ## Melody grid
 
 The logic is in `src/editor/melody-grid.js` (`melodyPicker`, `rowsFor`, `toggleNote`, `holdNote`, `finer`, `applyMelody`),

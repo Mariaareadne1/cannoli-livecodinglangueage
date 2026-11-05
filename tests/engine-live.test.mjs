@@ -37,3 +37,15 @@ test("a tempo change still waits for the bar line", async () => {
   assert.equal(engine.queue.length, 0);
   await engine.ctx.close();
 });
+
+test("a chord change reaches notes that haven't played yet", async () => {
+  const song = (chords) => compile(`tempo 120\nkey c major\nchords ${chords}\na: chord > free\nb: 0 0 0 0 0 0 0 0 > free\n`).program;
+  const engine = new Engine({ AudioContext: Silent });
+  await engine.play(song("I"));
+  await wait(300);
+  engine.live(song("V"));
+  const chord = engine.bars.at(-1).notes.find((n) => n.thread === "a");
+  assert.ok(chord.midi.map((m) => m % 12).includes(7) && chord.midi.map((m) => m % 12).includes(11), "the bar now holds a V chord");
+  engine.stop({ now: true });
+  await engine.ctx.close();
+});

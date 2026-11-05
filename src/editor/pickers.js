@@ -8,6 +8,7 @@
 import { BEATS } from "../core/styles.js";
 import { DRUM_WORDS, euclidSteps } from "../core/verbs.js";
 import { melodyPicker, splitBody } from "./melody-grid.js";
+import { chordPicker } from "./chord-picker.js";
 
 const STEPS_PER_BEAT = 4;
 const BARS = 16;
@@ -46,6 +47,8 @@ const CLAUSE = String.raw`bar\s*%\s*(\d+)\s*==\s*(\d+)`;
 export function pickerAt(text, cursor, opts = {}) {
   const line = lineAt(text, cursor);
   if (/^\s*#/.test(line.code)) return null;
+  const chords = chordPicker(line, text);
+  if (chords) return chords;
   const slider = sliderAt(line, cursor - line.start);
   if (slider) return slider;
   const bars = barPicker(line, cursor - line.start);

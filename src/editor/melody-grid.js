@@ -7,14 +7,15 @@
    null (a rest). No drawing here: the editors draw.
    ============================================================ */
 
-import { MODES, pitchClass, mod } from "../core/harmony.js";
+import { mod } from "../core/harmony.js";
+import { songKey, spellStep } from "./chord-picker.js";
 
 const HOLD = "hold";
 const STEPS_PER_BEAT = 2;
 const MOST_COLUMNS = 64;
 const TOKEN_RE = /\[|\]|,|_|\.|-?\d+/g;
 const MELODIC_NAMES = ["lead", "melody", "riff", "hook", "synth", "bass", "keys", "piano", "pluck", "bell", "vox", "voice", "echo", "counter", "theme"];
-const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const SCALE_LENGTH = 7;
 const TOP_ROW = 9;
 
 /* ---------- reading ---------- */
@@ -259,13 +260,11 @@ export function applyMelody(picker, cells) {
  */
 export function rowsFor(cells, text) {
   const used = cells.flatMap((c) => (Array.isArray(c) ? c : []));
-  const key = text.match(/^key\s+([a-gA-G][#b]?)\s+(\w+)/m);
-  const root = key ? pitchClass(key[1]) : 0;
-  const scale = MODES[key?.[2]] ?? MODES.major;
+  const key = songKey(text);
   const top = Math.max(TOP_ROW, ...used);
   const bottom = Math.min(0, ...used);
   return Array.from({ length: top - bottom + 1 }, (_, i) => {
     const step = top - i;
-    return { step, note: NOTE_NAMES[mod(root + scale[mod(step, scale.length)], 12)], home: mod(step, scale.length) === 0 };
+    return { step, note: spellStep(key, step), home: mod(step, SCALE_LENGTH) === 0 };
   });
 }

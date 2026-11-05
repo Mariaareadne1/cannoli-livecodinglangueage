@@ -21,6 +21,7 @@ const STORE_CODE = "cannoli-code";
 const OLD_STORE_CODES = ["pretzel-code", "loom-code"];   // saved under the language's earlier names
 const STORE_PREFS = "cannoli-prefs";
 const LINT_DELAY_MS = 120;
+const CHORD_PREVIEW_S = 0.8;
 const THREAD_COLORS = ["--t0", "--t1", "--t2", "--t3", "--t4", "--t5"];
 
 const $ = (id) => document.getElementById(id);
@@ -43,7 +44,17 @@ const editor = createEditor($("editor"), {
   },
   onSlide: playLive,
   onPreview: previewNote,
+  onChord: previewChord,
 });
+
+/* Clicked a chord while stopped: play it, in the song's key. */
+function previewChord(word) {
+  if (engine.playing) return;
+  const setup = editor.value.split("\n").filter((l) => /^(key|style)\b/.test(l)).join("\n");
+  const { errors, program } = compile(`${setup}\nchords ${word}\nnote: chord > pluck > long > free\n`);
+  const note = errors.length ? null : renderBar(program, 0)[0];
+  if (note) engine.preview(note.midi, note.props, CHORD_PREVIEW_S);
+}
 
 /* Clicked a note while stopped: play just that note, with the line's own sound. */
 function previewNote(step, picker) {

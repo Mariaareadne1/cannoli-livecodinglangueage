@@ -15,12 +15,12 @@ import { STYLES, STYLE_NAMES, BEATS } from "../core/styles.js";
 import { threadIdeas } from "./thread-ideas.js";
 
 const NOTE_NAMES = ["c", "c#", "d", "eb", "e", "f", "f#", "g", "ab", "a", "bb", "b"];
-const PROGRESSIONS = {
+export const PROGRESSIONS = {
   major: [["I V vi IV", "the pop progression"], ["I vi IV V", "fifties doo-wop"], ["ii V I I", "jazz cadence"], ["I IV V IV", "rock and roll"], ["vi IV I V", "hopeful, starts sad"]],
   minor: [["i VI III VII", "epic, cinematic"], ["i iv v i", "classic minor"], ["i VII VI VII", "rolling, folky"], ["i iv VII III", "dark pop"], ["i VI iv V", "dramatic, pulls home"]],
 };
 const ROMAN = { major: ["I", "ii", "iii", "IV", "V", "vi", "vii"], minor: ["i", "ii", "III", "iv", "v", "VI", "VII"] };
-const NEXT_CHORD = { 0: [3, 4, 5], 1: [4, 6], 2: [5, 3], 3: [4, 0, 1], 4: [0, 5], 5: [3, 1, 4], 6: [0, 2] };
+export const NEXT_CHORD = { 0: [3, 4, 5], 1: [4, 6], 2: [5, 3], 3: [4, 0, 1], 4: [0, 5], 5: [3, 1, 4], 6: [0, 2] };
 const STEP_AFTER = /(?:>|\(|\bevery\s+\S+|\bmaybe\s+\S+|\bsometimes|\belse)\s*$/;
 const LINE_STARTERS = [
   { label: "style", insert: "style ", detail: "style rave", doc: "a feel: rave, house, funk or chill. Sets tempo, drums and mix, and what gets suggested" },
