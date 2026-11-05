@@ -23,6 +23,7 @@ const OLD_STORE_CODES = ["pretzel-code", "loom-code"];   // saved under the lang
 const STORE_PREFS = "cannoli-prefs";
 const LINT_DELAY_MS = 120;
 const CHORD_PREVIEW_S = 0.8;
+const PREVIEW_SEARCH_BARS = 32;
 const THREAD_COLORS = ["--t0", "--t1", "--t2", "--t3", "--t4", "--t5"];
 
 const $ = (id) => document.getElementById(id);
@@ -46,7 +47,26 @@ const editor = createEditor($("editor"), {
   onSlide: playLive,
   onPreview: previewNote,
   onChord: previewChord,
+  onSound: previewSound,
 });
+
+/* Picked a sound while stopped: play that thread's own first note in it, or a plain note if it has none. */
+function previewSound(thread, word) {
+  if (engine.playing) return;
+  const { errors, program } = compile(editor.value);
+  const note = errors.length || !thread ? null : firstNoteOf(program, thread);
+  const fallback = compile(`note: 0 > ${word} > free\n`);
+  const chosen = note ?? (fallback.errors.length ? null : renderBar(fallback.program, 0)[0]);
+  if (chosen) engine.preview(chosen);
+}
+
+function firstNoteOf(program, thread) {
+  for (let bar = 0; bar < PREVIEW_SEARCH_BARS; bar++) {
+    const note = renderBar(program, bar).find((n) => n.thread === thread);
+    if (note) return note;
+  }
+  return null;
+}
 
 /* Clicked a chord while stopped: play it, in the song's key. */
 function previewChord(word) {
@@ -54,7 +74,7 @@ function previewChord(word) {
   const setup = editor.value.split("\n").filter((l) => /^(key|style)\b/.test(l)).join("\n");
   const { errors, program } = compile(`${setup}\nchords ${word}\nnote: chord > pluck > long > free\n`);
   const note = errors.length ? null : renderBar(program, 0)[0];
-  if (note) engine.preview(note.midi, note.props, CHORD_PREVIEW_S);
+  if (note) engine.preview(note, CHORD_PREVIEW_S);
 }
 
 /* Clicked a note while stopped: play just that note, with the line's own sound. */
@@ -64,7 +84,7 @@ function previewNote(step, picker) {
   const setup = editor.value.split("\n").filter((l) => /^(key|chords|style)\b/.test(l)).join("\n");
   const { errors, program } = compile(`${setup}\nnote: ${step} ${after.trim().startsWith(">") ? after.trim() : ""} > free\n`);
   const note = errors.length ? null : renderBar(program, 0)[0];
-  if (note && !note.drum) engine.preview(note.midi, note.props);
+  if (note) engine.preview(note);
 }
 
 /* A slider moved: while playing, the rest of the bar follows it straight away. */

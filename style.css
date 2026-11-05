@@ -338,6 +338,14 @@ body.resizing iframe { pointer-events: none; }
 .tl-number.now { color: var(--ink); font-weight: 600; }
 .tl-help { margin: 0 0 8px; font-size: 12px; }
 .tl-more { margin: 6px 0 10px; padding: 3px 9px; font-size: 11px; }
+.ed-sounds { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 3px; margin: 6px 0 10px; min-width: 420px; }
+.ed-sound { display: grid; gap: 1px; padding: 4px 8px; border: 1px solid var(--ink-faint); border-radius: 4px; background: var(--bg); color: var(--ink-dim); font: inherit; font-size: 11px; text-align: left; cursor: pointer; }
+.ed-sound strong { color: var(--ink); font-size: 12px; font-weight: 600; }
+.ed-sound-fits { color: var(--ink-faint); font-size: 10px; font-weight: 400; }
+.ed-sound:hover { border-color: var(--accent); color: var(--ink); }
+.ed-sound:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ed-sound.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.ed-sound.on strong, .ed-sound.on .ed-sound-fits { color: var(--bg); }
 .ed-chord-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 10px; }
 .ed-chord, .ed-chord-bar, .ed-chord-add, .ed-chord-prog {
   border: 1px solid var(--ink-faint);

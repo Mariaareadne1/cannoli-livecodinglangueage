@@ -22,6 +22,13 @@ import {
 const SOUNDS = ["saw", "square", "tri", "sine", "pluck", "pad", "bell", "supersaw", "acid", "stab", "sub", "boom"];
 const DRUMS = ["kick", "snare", "hat", "open", "clap", "rim", "tom", "cowbell", "shaker"];
 const SOUND_DOCS = {
+  saw: "bright and buzzy: cuts through a mix",
+  square: "hollow and reedy, like an old video game",
+  tri: "soft and round: the gentle default",
+  sine: "pure and smooth, with no edge at all",
+  pluck: "short and plucked, like a harp or a muted guitar",
+  pad: "slow to fade in and soft: for held chords",
+  bell: "a clear, ringing bell that fades slowly",
   supersaw: "a wide stack of detuned saws: the classic rave lead",
   acid: "a squelchy resonant bass, 303-style",
   stab: "a short, punchy chord stab",

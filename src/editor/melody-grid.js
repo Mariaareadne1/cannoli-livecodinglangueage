@@ -209,7 +209,7 @@ function spread(cells, columns) {
 }
 
 function pickerFor(part, cells, line, blank) {
-  return { kind: "melody", cells, name: part.name, blank, line: { ...line, patternStart: part.patternStart, patternEnd: part.patternEnd, blank } };
+  return { kind: "melody", cells, name: part.name, blank, isVariable: part.isVariable, line: { ...line, patternStart: part.patternStart, patternEnd: part.patternEnd, blank } };
 }
 
 function readPart(line) {

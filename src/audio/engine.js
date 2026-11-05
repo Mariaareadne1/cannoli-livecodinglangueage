@@ -109,13 +109,13 @@ export class Engine {
   }
 
   /** Sound one note now, while stopped: for hearing what you just clicked. */
-  async preview(midi, props, seconds = PREVIEW_S) {
+  async preview({ midi, drum = null, props }, seconds = PREVIEW_S) {
     await this.ensureContext();
     if (this.playing) return;
     const now = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(now);
     this.master.gain.setValueAtTime(MASTER_LEVEL, now);
-    playNote(this.ctx, this.buses, { midi, drum: null, time: now + PREVIEW_DELAY_S, seconds, beatTimes: [], duckTimes: [], props });
+    playNote(this.ctx, this.buses, { midi, drum, time: now + PREVIEW_DELAY_S, seconds, beatTimes: [], duckTimes: [], props });
   }
 
   /** Stop at the next bar line, or right away. */

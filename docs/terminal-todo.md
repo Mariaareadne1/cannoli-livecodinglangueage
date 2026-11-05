@@ -19,6 +19,15 @@ The logic is already shared and tested in `src/editor/pickers.js`
 - [ ] `esc` closes the grid for that line until the line changes
 - [ ] Add it to the editor keys in the guide's reference (`cli/guide-text.js`) and the README
 
+## Sound picker
+
+The logic is in `src/editor/sound-picker.js` (`soundPicker`, `applySound`, `findSound`, `addSound`), and `pickerAt` already
+returns `kind: "sound"`. The web version is `drawSound` in `src/editor/editor.js`.
+
+- [ ] List the sounds under the word, with their descriptions, as many as fit
+- [ ] Arrow keys and `space`, or a click, to switch
+- [ ] Play the thread's first note when one is picked while stopped: see `previewSound` in `src/app.js`
+
 ## Song timeline
 
 The logic is in `src/editor/timeline.js` (`readTimeline`, `applyTimeline`, `timelineLength`). The web version is `src/timeline-panel.js`.

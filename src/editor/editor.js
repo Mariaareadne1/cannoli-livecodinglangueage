@@ -5,6 +5,8 @@
        Shift+Tab to write out the whole line it shows)
      · a grid under drum threads and every/firstOf/lastOf: click
        the beats or bars you want and it writes the code
+     · a sound picker on sound words: every sound, described,
+       and each plays as you pick it
      · a chord picker on the chords line: a block per bar, the
        chords of the key, what usually comes next, and progressions
      · a melody grid on patterns of scale steps: click notes,
@@ -19,6 +21,7 @@ import { highlight } from "./highlight.js";
 import { complete } from "./complete.js";
 import { pickerAt, applyBeat, applyBars, applySlider, addSlider } from "./pickers.js";
 import { applyMelody, toggleNote, holdNote, rowsFor } from "./melody-grid.js";
+import { applySound, findSound, addSound } from "./sound-picker.js";
 import { applyChords, setChord, addBar, removeBar, slotAtColumn, goodNext, nameOf } from "./chord-picker.js";
 
 const PAD_X = 16;
@@ -33,7 +36,7 @@ const MELODY_MOST_COLUMNS = 32;
  * @param {HTMLElement} root
  * @param {{ value: string, onRun: () => void, onStop: (now: boolean) => void, onInput: (text: string) => void }} opts
  */
-export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {}, onPreview = () => {}, onChord = () => {} }) {
+export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {}, onPreview = () => {}, onChord = () => {}, onSound = () => {} }) {
   root.classList.add("ed");
   root.innerHTML = `
     <div class="ed-gutter" aria-hidden="true"></div>
@@ -195,9 +198,53 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     state.picker = picker;
     if (picker.kind === "slider") drawSlider(picker);
     else if (picker.kind === "chords") drawChords(picker, cursor);
+    else if (picker.kind === "sound") drawSound(picker);
     else if (picker.kind === "melody") drawMelody(picker);
     else drawPicker(picker, cursor);
     placePicker(cursor);
+  }
+
+  function drawSound(picker) {
+    const focus = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.act : null;
+    const groups = picker.groups.map((group) => `<p class="ed-picker-title">${esc(group.title)}</p><div class="ed-sounds">${group.sounds.map((s) => `
+      <button type="button" class="ed-sound${s.word === picker.current ? " on" : ""}" data-act="sound:${esc(s.word)}" aria-pressed="${s.word === picker.current}" tabindex="-1">
+        <strong>${esc(s.word)}${s.fits ? ' <span class="ed-sound-fits">fits this style</span>' : ""}</strong><span>${esc(s.doc)}</span></button>`).join("")}</div>`).join("");
+    const who = picker.thread ? `<strong>${esc(picker.thread)}</strong> plays` : "this plays";
+    setPickerHtml(`<p class="ed-picker-title">${who} <code>${esc(picker.current)}</code>: click a sound to hear it and switch</p>${groups}
+      <p class="ed-picker-keys">it writes the code on your line · esc closes · ctrl+b to use the keyboard</p>`);
+    pickerBox.hidden = false;
+    if (focus) pickerBox.querySelector(`[data-act="${focus}"]`)?.focus();
+  }
+
+  function chooseSound(word) {
+    const picker = state.picker;
+    if (picker?.kind !== "sound") return;
+    const keyboard = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.act : null;
+    const change = applySound(picker, word);
+    replaceRange(change.start, change.end, change.text);
+    input.setSelectionRange(change.start + 1, change.start + 1);   // stay in the word, so the picker stays open
+    closeCard();
+    onSlide();
+    onSound(picker.thread, word);
+    if (keyboard) pickerBox.querySelector(`[data-act="${keyboard}"]`)?.focus();
+  }
+
+  /* From a grid: go to this line's sound, adding one if it hasn't got one. */
+  function goToSound() {
+    const cursor = caret();
+    const line = lineStartOf(cursor);
+    const found = findSound(input.value, line);
+    if (found) {
+      input.focus();
+      input.setSelectionRange(found.start + 1, found.start + 1);
+    } else {
+      const change = addSound(input.value, line);
+      replaceRange(change.start, change.end, change.text);
+      const inWord = change.start + change.text.indexOf(">") + 3;
+      input.setSelectionRange(inWord, inWord);
+      onSlide();
+    }
+    closeCard();
   }
 
   /* The bar being chosen: the one the caret is on, until a block is clicked. */
@@ -245,10 +292,11 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     if (keyboard) pickerBox.querySelector(`[data-act="${keyboard}"]`)?.focus();
   }
 
-  function chordAction(act) {
+  function pickerAct(act) {
     const picker = state.picker;
-    if (picker?.kind !== "chords") return;
     const [name, value] = act.split(":");
+    if (name === "sound") return chooseSound(value);
+    if (picker?.kind !== "chords") return;
     const cursor = input.selectionStart;
     const slot = chordSlot(picker, cursor);
     if (name === "slot") {
@@ -301,7 +349,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     }).join("");
     setPickerHtml(`<p class="ed-picker-title"><strong>${esc(picker.name)}</strong>: click notes, drag right to hold them</p>
       <div class="ed-melody">${body}</div>
-      <div class="ed-picker-actions"><button type="button" class="btn" data-action="finer">more steps</button></div>
+      <div class="ed-picker-actions"><button type="button" class="btn" data-action="finer">more steps</button>${picker.blank || picker.isVariable ? "" : '<button type="button" class="btn" data-action="sound">choose a sound</button>'}</div>
       <p class="ed-picker-keys">notes on the beat lock to the current chord (add &gt; free to turn that off) · esc closes · ctrl+b to use the keyboard</p>`);
     pickerBox.hidden = false;
     if (focus) pickerBox.querySelector(`[data-melody="${focus}"]`)?.focus();
@@ -398,7 +446,8 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
       ? `<strong>${esc(picker.name)}</strong> plays <code>${esc(picker.drum)}</code>: click the steps you want`
       : `click the bars where <code>${esc(picker.verb || "rev")}</code> plays`;
     const focus = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.cell : null;
-    setPickerHtml(`<p class="ed-picker-title">${title}</p><div class="ed-picker-cells">${groups}</div>
+    const soundButton = isBeat && !picker.blank ? '<div class="ed-picker-actions"><button type="button" class="btn" data-action="sound">choose a sound</button></div>' : "";
+    setPickerHtml(`<p class="ed-picker-title">${title}</p><div class="ed-picker-cells">${groups}</div>${soundButton}
       <p class="ed-picker-keys">it writes the code on your line · ctrl+enter to hear it · esc closes · ctrl+b to use the keyboard</p>`);
     if (focus !== null && focus !== undefined) pickerBox.querySelector(`[data-cell="${focus}"]`)?.focus();
     pickerBox.hidden = false;
@@ -437,9 +486,10 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     const melody = e.target.closest("[data-melody]");
     if (melody) clickMelody(Number(melody.dataset.step), Number(melody.dataset.column));
     const act = e.target.closest("[data-act]");
-    if (act) chordAction(act.dataset.act);
+    if (act) pickerAct(act.dataset.act);
     const action = e.target.closest("[data-action]")?.dataset.action;
     if (action === "finer") makeFiner();
+    else if (action === "sound") goToSound();
     else if (action) finishSlider(action);
   });
   pickerBox.addEventListener("mouseover", (e) => {
@@ -456,7 +506,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     updatePicker();
   }
 
-  function chordKey(e, act) {
+  function actKey(e, act) {
     const all = [...pickerBox.querySelectorAll("[data-act]")];
     const at = all.indexOf(act);
     if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowUp") {
@@ -465,7 +515,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
       all[(at + (forward ? 1 : all.length - 1)) % all.length].focus();
     } else if (e.key === " " || e.key === "Enter") {
       e.preventDefault();
-      chordAction(act.dataset.act);
+      pickerAct(act.dataset.act);
     } else if (e.key === "Escape") {
       e.preventDefault();
       input.focus();
@@ -513,7 +563,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     const note = e.target.closest("[data-melody]");
     if (note) return melodyKey(e, note);
     const act = e.target.closest("[data-act]");
-    if (act) return chordKey(e, act);
+    if (act) return actKey(e, act);
     const cell = e.target.closest("[data-cell]");
     if (!cell) return;
     const i = Number(cell.dataset.cell);
