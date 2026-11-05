@@ -29,6 +29,7 @@ const OVERRIDES = {
 
 const GENERATOR_LINES = {
   euclid: "kick: euclid 3 8 > bd",
+  euclidRot: "kick: euclidRot 3 8 2 > bd",
   run: "lead: run 8 * 3 % 7 > fast 2 > bell",
   walk: "lead: walk 8 > penta > pluck",
   rand: "lead: rand 4 > slow 2 > bell",
@@ -56,6 +57,7 @@ const NUMBER_HINTS = {
   gain: "0 silent … 1 full",
   pan: "-1 left, 0 middle, 1 right",
   euclid: "how many hits, then over how many steps: 5 16, 3 8",
+  euclidRot: "how many hits, over how many steps, then how far to turn it: 3 8 2",
   run: "how many notes: 4, 8, 12",
   walk: "how many notes: 4, 8, 16",
   rand: "how many notes: 2, 4, 8",
@@ -127,7 +129,8 @@ function argSpan(line, name, args, before = ">(") {
 }
 
 function hints(name, args) {
-  return args.map((a) => [ARG_WORDS[a] ?? a, a === "num" ? NUMBER_HINTS[name] ?? "any number" : ARG_HINTS[a] ?? "yours to change"]);
+  const notes = args.map((a) => [ARG_WORDS[a] ?? a, a === "num" ? NUMBER_HINTS[name] ?? "any number" : ARG_HINTS[a] ?? "yours to change"]);
+  return notes.filter(([, hint], i) => notes.findIndex(([, other]) => other === hint) === i);   // several numbers can share one note
 }
 
 /* ---------- a few lines for each section, with what to change in the comments ---------- */

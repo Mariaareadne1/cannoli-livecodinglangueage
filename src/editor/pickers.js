@@ -10,6 +10,7 @@ import { DRUM_WORDS, euclidSteps } from "../core/verbs.js";
 import { melodyPicker, splitBody } from "./melody-grid.js";
 import { chordPicker } from "./chord-picker.js";
 import { soundPicker } from "./sound-picker.js";
+import { ringPicker } from "./euclid-ring.js";
 
 const STEPS_PER_BEAT = 4;
 const BARS = 16;
@@ -52,6 +53,8 @@ export function pickerAt(text, cursor, opts = {}) {
   if (chords) return chords;
   const sound = soundPicker(line, cursor - line.start, text);
   if (sound) return sound;
+  const ring = ringPicker(line, cursor - line.start);
+  if (ring) return ring;
   const slider = sliderAt(line, cursor - line.start);
   if (slider) return slider;
   const bars = barPicker(line, cursor - line.start);
@@ -95,6 +98,8 @@ function readSteps(pattern, size) {
   if (beat) return BEATS[beat[1]] && BEATS[beat[1]].steps.length === size ? [...BEATS[beat[1]].steps].map((c) => c === "x") : null;
   const euclid = pattern.match(/^euclid\s+(\d+)\s+(\d+)$/);
   if (euclid) return stretch(euclidSteps(Number(euclid[1]), Number(euclid[2])), size);
+  const turned = pattern.match(/^euclidRot\s+(\d+)\s+(\d+)\s+(\d+)$/);
+  if (turned) return stretch(euclidSteps(Number(turned[1]), Number(turned[2]), Number(turned[3])), size);
   const hits = pattern.match(/^hits\s+(\d+)\s+(\d+)$/);
   if (hits) {
     const [k, n] = [Number(hits[1]), Number(hits[2])];

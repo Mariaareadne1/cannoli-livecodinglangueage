@@ -5,6 +5,8 @@
        Shift+Tab to write out the whole line it shows)
      · a grid under drum threads and every/firstOf/lastOf: click
        the beats or bars you want and it writes the code
+     · a ring on euclid: sliders for hits, steps and rotation,
+       with the rhythm drawn as a circle
      · a sound picker on sound words: every sound, described,
        and each plays as you pick it
      · a chord picker on the chords line: a block per bar, the
@@ -21,13 +23,19 @@ import { highlight } from "./highlight.js";
 import { complete } from "./complete.js";
 import { pickerAt, applyBeat, applyBars, applySlider, addSlider } from "./pickers.js";
 import { applyMelody, toggleNote, holdNote, rowsFor } from "./melody-grid.js";
-import { applySound, findSound, addSound } from "./sound-picker.js";
+import { applySound, findSound, addSound, threadOfLine } from "./sound-picker.js";
+import { applyRing, ringPattern, ringName } from "./euclid-ring.js";
 import { applyChords, setChord, addBar, removeBar, slotAtColumn, goodNext, nameOf } from "./chord-picker.js";
 
 const PAD_X = 16;
 const PAD_Y = 14;
 
 const PICKER_BARS_PER_GROUP = 4;
+const RING_CENTRE = 75;
+const RING_RADIUS = 60;
+const RING_LARGEST_DOT = 8;
+const RING_SMALLEST_DOT = 3;
+const RING_MOST_STEPS = 32;
 const CHORD_PROGRESSIONS = 6;
 const MELODY_BEATS = 4;
 const MELODY_MOST_COLUMNS = 32;
@@ -36,7 +44,7 @@ const MELODY_MOST_COLUMNS = 32;
  * @param {HTMLElement} root
  * @param {{ value: string, onRun: () => void, onStop: (now: boolean) => void, onInput: (text: string) => void }} opts
  */
-export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {}, onPreview = () => {}, onChord = () => {}, onSound = () => {} }) {
+export function createEditor(root, { value, onRun, onStop, onInput, onSlide = () => {}, onPreview = () => {}, onChord = () => {}, onSound = () => {}, onRing = () => {} }) {
   root.classList.add("ed");
   root.innerHTML = `
     <div class="ed-gutter" aria-hidden="true"></div>
@@ -199,9 +207,76 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     if (picker.kind === "slider") drawSlider(picker);
     else if (picker.kind === "chords") drawChords(picker, cursor);
     else if (picker.kind === "sound") drawSound(picker);
+    else if (picker.kind === "euclid") drawRing(picker);
     else if (picker.kind === "melody") drawMelody(picker);
     else drawPicker(picker, cursor);
     placePicker(cursor);
+  }
+
+  /* The rhythm as a circle: a dot per step, hits joined up, step one at the top. */
+  function ringSvg(picker) {
+    const pattern = ringPattern(picker);
+    const point = (i, r) => {
+      const angle = (i / pattern.length) * 2 * Math.PI - Math.PI / 2;
+      return [RING_CENTRE + r * Math.cos(angle), RING_CENTRE + r * Math.sin(angle)].map((v) => v.toFixed(1));
+    };
+    const dot = Math.max(RING_SMALLEST_DOT, Math.min(RING_LARGEST_DOT, (RING_RADIUS * 2.4) / pattern.length));
+    const hitPoints = pattern.flatMap((on, i) => (on ? [point(i, RING_RADIUS).join(",")] : [])).join(" ");
+    const dots = pattern.map((on, i) => {
+      const [x, y] = point(i, RING_RADIUS);
+      return `<circle cx="${x}" cy="${y}" r="${dot}" class="ed-ring-dot${on ? " on" : ""}${i === 0 ? " first" : ""}"/>`;
+    }).join("");
+    const shape = hitPoints ? `<polygon points="${hitPoints}" class="ed-ring-shape"/>` : "";
+    return `<svg viewBox="0 0 ${RING_CENTRE * 2} ${RING_CENTRE * 2}" class="ed-ring-svg" role="img" aria-label="${picker.hits} hits over ${picker.steps} steps">${shape}
+      <line x1="${RING_CENTRE}" y1="${RING_CENTRE}" x2="${RING_CENTRE}" y2="${RING_CENTRE - RING_RADIUS}" class="ed-ring-hand" hidden/>${dots}</svg>`;
+  }
+
+  function ringLabel(picker) {
+    const name = ringName(picker.hits, picker.steps, picker.rotation);
+    return `${picker.hits} hits over ${picker.steps} steps${name ? ` · ${name}` : ""}`;
+  }
+
+  function drawRing(picker) {
+    const focus = pickerBox.contains(document.activeElement) ? document.activeElement.dataset.ring : null;
+    const slider = (name, label, min, max, value) => `<label class="ed-ring-control"><span>${label}</span>
+      <input type="range" class="ed-picker-range" data-ring="${name}" min="${min}" max="${max}" step="1" value="${value}"/>
+      <output data-ring-value="${name}">${value}</output></label>`;
+    const editable = pickerAt(input.value, picker.line.start + 1, {})?.kind === "beat";
+    setPickerHtml(`<p class="ed-picker-title"><code>${esc(picker.word)}</code>: spreads hits as evenly as it can. <span data-ring-label>${esc(ringLabel(picker))}</span></p>
+      <div class="ed-ring"><div data-ring-drawing>${ringSvg(picker)}</div><div class="ed-ring-controls">
+        ${slider("hits", "hits", 0, picker.steps, picker.hits)}
+        ${slider("steps", "steps", 1, RING_MOST_STEPS, picker.steps)}
+        ${picker.word === "hits" ? "" : slider("rotation", "rotate", 0, picker.steps - 1, picker.rotation)}
+      </div></div>
+      ${editable ? '<div class="ed-picker-actions"><button type="button" class="btn" data-action="steps">edit each step</button></div>' : ""}
+      <p class="ed-picker-keys">it writes the code on your line · esc closes · ctrl+b to use the keyboard</p>`);
+    pickerBox.hidden = false;
+    if (focus) pickerBox.querySelector(`[data-ring="${focus}"]`)?.focus();
+  }
+
+  function slideRing(control) {
+    state.sliding = true;
+    const read = (name) => Number(pickerBox.querySelector(`[data-ring="${name}"]`)?.value ?? 0);
+    const steps = read("steps");
+    const change = applyRing(state.picker, { hits: read("hits"), steps, rotation: read("rotation") });
+    writeQuietly(change);
+    state.heldCaret = change.start + 1;
+    state.picker = pickerAt(input.value, state.heldCaret) ?? state.picker;
+    const { hits, rotation } = state.picker;
+    // the other sliders' limits follow the steps; the page isn't rebuilt, so the slider stays in the hand
+    const fit = (name, max, value) => {
+      const el = pickerBox.querySelector(`[data-ring="${name}"]`);
+      if (!el) return;
+      el.max = max;
+      if (el !== control) el.value = value;
+      pickerBox.querySelector(`[data-ring-value="${name}"]`).textContent = value;
+    };
+    fit("hits", steps, hits);
+    fit("rotation", steps - 1, rotation);
+    pickerBox.querySelector('[data-ring-value="steps"]').textContent = steps;
+    pickerBox.querySelector("[data-ring-drawing]").innerHTML = ringSvg(state.picker);
+    pickerBox.querySelector("[data-ring-label]").textContent = ringLabel(state.picker);
+    onSlide();
   }
 
   function drawSound(picker) {
@@ -424,11 +499,14 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
 
   pickerBox.addEventListener("input", (e) => {
     if (!e.target.matches(".ed-picker-range")) return;
+    if (e.target.dataset.ring) return slideRing(e.target);
     state.sliding = true;
     writeSliderValue(Number(e.target.value));
   });
   pickerBox.addEventListener("change", (e) => {
-    if (e.target.matches(".ed-picker-range")) state.sliding = false;
+    if (!e.target.matches(".ed-picker-range")) return;
+    state.sliding = false;
+    if (e.target.dataset.ring) onRing(threadOfLine(input.value, lineStartOf(caret())));
   });
 
   function drawPicker(picker, cursor) {
@@ -479,7 +557,10 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
   }
 
   pickerBox.addEventListener("mousedown", (e) => {
-    if (e.target.matches(".ed-picker-range")) return;   // the slider needs the mouse to itself
+    if (e.target.matches(".ed-picker-range")) {
+      state.sliding = true;   // nothing redraws while it's held: replacing it would drop it out of the hand
+      return;                 // and it needs the mouse to itself
+    }
     e.preventDefault();   // keep the caret in the editor
     const cell = e.target.closest("[data-cell]");
     if (cell) toggleCell(Number(cell.dataset.cell));
@@ -490,13 +571,25 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
     const action = e.target.closest("[data-action]")?.dataset.action;
     if (action === "finer") makeFiner();
     else if (action === "sound") goToSound();
+    else if (action === "steps") {
+      input.focus();
+      const start = state.picker.line.start;
+      input.setSelectionRange(start + 1, start + 1);
+      closeCard();
+    }
     else if (action) finishSlider(action);
   });
   pickerBox.addEventListener("mouseover", (e) => {
     const melody = e.target.closest("[data-melody]");
     if (melody && e.buttons === 1) dragMelody(Number(melody.dataset.column));
   });
-  document.addEventListener("mouseup", () => { state.melodyDrag = null; });
+  document.addEventListener("mouseup", () => {
+    state.melodyDrag = null;
+    if (state.sliding) {
+      state.sliding = false;
+      updatePicker();
+    }
+  });
 
   function makeFiner() {
     const picker = state.picker;
@@ -744,6 +837,14 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
       render();
     },
     applyFix,
+    /** Where the bar has got to (0 to 1), or null when stopped: the ring's hand follows it. */
+    setProgress(progress) {
+      if (state.picker?.kind !== "euclid") return;
+      const hand = pickerBox.querySelector(".ed-ring-hand");
+      if (!hand) return;
+      hand.toggleAttribute("hidden", progress === null);
+      if (progress !== null) hand.setAttribute("transform", `rotate(${progress * 360} ${RING_CENTRE} ${RING_CENTRE})`);
+    },
     /** Another panel changed the code: one undoable step, leaving the caret where it was and the editor unfocused. */
     edit(change) {
       const cursor = input.selectionStart;

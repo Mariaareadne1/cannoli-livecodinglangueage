@@ -51,6 +51,7 @@ test("it reads what's already written", () => {
   assert.equal(grid(at("kick: 0 . 0 . > bd").steps), "x.......x.......");
   assert.equal(grid(at("kick: euclid 3 8 > bd").steps), "x.....x.....x...");
   assert.equal(grid(at("hats: hits 4 16 > hh").steps), "x...x...x...x...");
+  assert.equal(grid(at("kick: euclidRot 3 8 2 > bd").steps), "..x.....x...x...");
 });
 
 test("patterns it can't show as a grid don't open one", () => {

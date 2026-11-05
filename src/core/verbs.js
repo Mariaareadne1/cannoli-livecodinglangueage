@@ -179,6 +179,8 @@ for (const [name, doc] of Object.entries(EFFECT_DOCS)) {
 export const GENERATORS = {
   euclid: gen(["num", "num"], "k hits spread as evenly as possible over n steps (a Euclidean rhythm)", "euclid 3 8 > bd", ([k, n], src) =>
     perCycle((ctx) => euclidSteps(Math.round(k(ctx)), Math.max(1, Math.round(n(ctx)))).map((on) => (on ? note(0, src) : silence)))),
+  euclidRot: gen(["num", "num", "num"], "euclid, turned: the rhythm starts r steps later in the pattern", "euclidRot 3 8 2 > bd", ([k, n, r], src) =>
+    perCycle((ctx) => euclidSteps(Math.round(k(ctx)), Math.max(1, Math.round(n(ctx))), Math.round(r(ctx))).map((on) => (on ? note(0, src) : silence)))),
   hits: gen(["num", "num"], "k hits spread evenly over n steps (the older spelling of euclid: a rotation of it)", "hits 3 8 > bd", ([k, n], src) =>
     perCycle((ctx) => {
       const steps = Math.max(1, Math.round(n(ctx)));
@@ -209,7 +211,7 @@ export const GENERATORS = {
 /* ---------- helpers ---------- */
 
 /* Bjorklund's algorithm, built the way Strudel's is: euclid 3 8 is x..x..x. and euclid 5 8 is x.xx.xx. */
-export function euclidSteps(hits, steps) {
+export function euclidSteps(hits, steps, rotation = 0) {
   const ons = Math.max(0, Math.min(steps, hits));
   if (ons === 0) return Array(steps).fill(false);
   let front = Array.from({ length: ons }, () => [true]);
@@ -221,7 +223,9 @@ export function euclidSteps(hits, steps) {
     front = merged;
     back = rest;
   }
-  return [...front, ...back].flat();
+  const pattern = [...front, ...back].flat();
+  const turn = mod(rotation, steps);
+  return [...pattern.slice(turn), ...pattern.slice(0, turn)];
 }
 
 function verb(group, args, doc, example, apply) {

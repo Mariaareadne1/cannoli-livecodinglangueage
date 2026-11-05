@@ -338,6 +338,18 @@ body.resizing iframe { pointer-events: none; }
 .tl-number.now { color: var(--ink); font-weight: 600; }
 .tl-help { margin: 0 0 8px; font-size: 12px; }
 .tl-more { margin: 6px 0 10px; padding: 3px 9px; font-size: 11px; }
+.ed-ring { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 8px 0; }
+.ed-ring-svg { display: block; width: 150px; height: 150px; }
+.ed-ring-dot { fill: var(--bg); stroke: var(--ink-faint); stroke-width: 1; }
+.ed-ring-dot.on { fill: var(--accent); stroke: var(--accent); }
+.ed-ring-dot.first { stroke: var(--ink); stroke-width: 2; }
+.ed-ring-shape { fill: var(--accent); fill-opacity: 0.14; stroke: var(--accent); stroke-opacity: 0.6; stroke-width: 1; }
+.ed-ring-hand { stroke: var(--ink); stroke-width: 1.5; }
+.ed-ring-hand[hidden] { display: none; }
+.ed-ring-controls { display: grid; gap: 6px; flex: 1; min-width: 220px; }
+.ed-ring-control { display: grid; grid-template-columns: 3.4em 1fr 2em; align-items: center; gap: 8px; color: var(--ink-dim); }
+.ed-ring-control input { width: 100%; min-width: 0; accent-color: var(--accent); }
+.ed-ring-control output { color: var(--ink); font-weight: 600; text-align: right; }
 .ed-sounds { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 3px; margin: 6px 0 10px; min-width: 420px; }
 .ed-sound { display: grid; gap: 1px; padding: 4px 8px; border: 1px solid var(--ink-faint); border-radius: 4px; background: var(--bg); color: var(--ink-dim); font: inherit; font-size: 11px; text-align: left; cursor: pointer; }
 .ed-sound strong { color: var(--ink); font-size: 12px; font-weight: 600; }

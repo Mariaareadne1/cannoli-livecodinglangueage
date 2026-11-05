@@ -8,7 +8,7 @@
 /* The same name, doing the same thing. Only the punctuation differs: > fast 2 here, .fast(2) there. */
 export const SAME_NAMES = [
   "rev", "fast", "slow", "ply", "clip", "scaleTranspose", "stack", "firstOf", "lastOf", "someCycles", "someCyclesBy",
-  "hush", "gain", "run", "euclid",
+  "hush", "gain", "run", "euclid", "euclidRot",
   "sine", "square", "sawtooth", "triangle", "supersaw",
   "bd", "sd", "hh", "oh", "cp", "rim", "mt", "cb", "sh",
 ];

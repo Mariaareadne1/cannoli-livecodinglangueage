@@ -19,6 +19,15 @@ The logic is already shared and tested in `src/editor/pickers.js`
 - [ ] `esc` closes the grid for that line until the line changes
 - [ ] Add it to the editor keys in the guide's reference (`cli/guide-text.js`) and the README
 
+## Euclid ring
+
+The logic is in `src/editor/euclid-ring.js` (`ringPicker`, `ringPattern`, `ringName`, `applyRing`), and `pickerAt` already returns
+`kind: "euclid"`. `euclidRot` already plays in the terminal. The web version is `drawRing` in `src/editor/editor.js`.
+
+- [ ] Draw the rhythm, as a row of steps or an ASCII ring, with the three values beside it
+- [ ] `← →` to change a value, `↑ ↓` to move between hits, steps and rotate
+- [ ] Play a bar when you stop adjusting, while stopped: `engine.previewBar`; see `previewRing` in `src/app.js`
+
 ## Sound picker
 
 The logic is in `src/editor/sound-picker.js` (`soundPicker`, `applySound`, `findSound`, `addSound`), and `pickerAt` already

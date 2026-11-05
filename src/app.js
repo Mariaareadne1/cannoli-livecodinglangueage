@@ -48,7 +48,22 @@ const editor = createEditor($("editor"), {
   onPreview: previewNote,
   onChord: previewChord,
   onSound: previewSound,
+  onRing: previewRing,
 });
+
+/* Let go of a ring's slider while stopped: play one bar of that thread. */
+function previewRing(thread) {
+  if (engine.playing || !thread) return;
+  const { errors, program } = compile(editor.value);
+  if (errors.length) return;
+  for (let bar = 0; bar < PREVIEW_SEARCH_BARS; bar++) {
+    const list = renderBar(program, bar).filter((n) => n.thread === thread);
+    if (list.length) {
+      engine.previewBar({ list, settings: program.settings });
+      return;
+    }
+  }
+}
 
 /* Picked a sound while stopped: play that thread's own first note in it, or a plain note if it has none. */
 function previewSound(thread, word) {
@@ -326,6 +341,7 @@ function highlightSounding() {
 function frame() {
   const now = engine.position();
   timeline.setBar(now ? now.bar + 1 : 0);
+  editor.setProgress(now ? now.progress : null);
   renderStatus();
   drawThreads();
   highlightSounding();

@@ -118,6 +118,19 @@ export class Engine {
     playNote(this.ctx, this.buses, { midi, drum, time: now + PREVIEW_DELAY_S, seconds, beatTimes: [], duckTimes: [], props });
   }
 
+  /** Sound one bar's notes now, while stopped: for hearing a rhythm you just shaped. */
+  async previewBar(notes) {
+    await this.ensureContext();
+    if (this.playing) return;
+    const now = this.ctx.currentTime;
+    const seconds = this.barSeconds({ settings: notes.settings });
+    this.master.gain.cancelScheduledValues(now);
+    this.master.gain.setValueAtTime(MASTER_LEVEL, now);
+    for (const n of notes.list) {
+      playNote(this.ctx, this.buses, { midi: n.midi, drum: n.drum, time: now + PREVIEW_DELAY_S + n.start * seconds, seconds: n.dur * seconds, beatTimes: [], duckTimes: [], props: n.props });
+    }
+  }
+
   /** Stop at the next bar line, or right away. */
   stop({ now = false } = {}) {
     if (!this.playing) return;
