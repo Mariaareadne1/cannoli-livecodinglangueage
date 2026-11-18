@@ -12,7 +12,7 @@
  * @typedef {{ label: string, dark: boolean, bg: string, panel: string, raised: string, line: string,
  *             ink: string, soft: string, dim: string, faint: string, accent: string,
  *             error: string, warn: string, threads: string[],
- *             glow: { core: string, mid: string, edge: string, dot: string } }} Theme
+ *             glow: { core: string, mid: string, edge: string, dot: string }, plain?: boolean }} Theme
  * @type {Record<string, Theme>}
  */
 export const THEMES = {
@@ -70,6 +70,17 @@ export const THEMES = {
     threads: ["#ffffff", "#ffc2da", "#ff8fb8", "#ffe0ec", "#f7a1c4", "#ffd1e3"],
     glow: { core: "#ffffff", mid: "#ffc2da", edge: "#ff5c9a", dot: "#5e1232" },
   },
+  /* Terminal only. These values are never shown: the pane strips every colour and uses the terminal's own. */
+  plain: {
+    label: "plain terminal",
+    dark: true,
+    plain: true,
+    bg: "#000000", panel: "#000000", raised: "#000000", line: "#ffffff",
+    ink: "#ffffff", soft: "#ffffff", dim: "#ffffff", faint: "#ffffff",
+    accent: "#ffffff", error: "#ffffff", warn: "#ffffff",
+    threads: ["#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#ffffff"],
+    glow: { core: "#ffffff", mid: "#ffffff", edge: "#ffffff", dot: "#ffffff" },
+  },
 };
 
 /* A family is one colour scheme in three tones. On stage each pane gets a tone,
@@ -95,7 +106,8 @@ export function paneTheme(name, pane) {
   return theme(name);
 }
 
-export const THEME_NAMES = Object.keys(THEMES);
+/* The themes the web app offers. */
+export const THEME_NAMES = Object.keys(THEMES).filter((name) => !THEMES[name].plain);
 export const DEFAULT_THEME = "deep";
 
 export function theme(name) {

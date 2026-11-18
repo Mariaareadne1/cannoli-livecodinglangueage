@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseKeys } from "../cli/keys.js";
+import { plainFrame, fg, bg, BOLD, RESET, REVERSE, UNDERLINE } from "../cli/ansi.js";
 import { buildPanel, perform } from "../cli/panel/model.js";
 import { layoutPanel, firstFocus, moveFocus, focused, hitTest, sliderValueAt, clampToStep } from "../cli/panel/layout.js";
 import { strudelPickerAt } from "../cli/strudel/pickers.js";
@@ -50,4 +51,9 @@ test("a slider's value follows the column and stays on its steps", () => {
   const low = sliderValueAt(slider, 0, WIDTH);
   const high = sliderValueAt(slider, WIDTH - 1, WIDTH);
   assert.ok(low <= high);
+});
+
+test("a plain frame keeps its text and selection but loses every colour", () => {
+  const frame = `${bg("#102030")}${fg("#ffffff")}${BOLD}kick${RESET} ${REVERSE}on${RESET} ${UNDERLINE}off${RESET}\x1b[3;4H`;
+  assert.equal(plainFrame(frame), `kick${RESET} ${REVERSE}on${RESET} ${UNDERLINE}off${RESET}\x1b[3;4H`);
 });

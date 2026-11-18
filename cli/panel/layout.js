@@ -4,7 +4,7 @@
    a click lands on, and draws it in the theme's colours.
    ============================================================ */
 
-import { fg, bg, RESET, BOLD, fit } from "../ansi.js";
+import { fg, bg, RESET, BOLD, REVERSE, UNDERLINE, fit } from "../ansi.js";
 
 const LABEL_W = 10;
 const CELL_GAP = 1;
@@ -117,7 +117,7 @@ function drawLine(line, isFocus, focusIndex, th, width) {
     const { min, max, value, label } = line.slider;
     const filled = Math.round(((value - min) / (max - min || 1)) * (size - 1));
     const bar = Array.from({ length: size }, (_, i) => (i === filled ? "█" : i < filled ? "━" : "─")).join("");
-    const head = isFocus ? `${bg(th.raised)}${fg(th.ink)}${BOLD}` : `${fg(th.dim)}`;
+    const head = isFocus ? `${th.plain ? REVERSE : ""}${bg(th.raised)}${fg(th.ink)}${BOLD}` : `${fg(th.dim)}`;
     return `${base}${head}${fit(` ${label}`, from)}${RESET}${base}${fg(th.accent)}${bar}${fg(th.ink)}${BOLD}${String(value).padStart(SLIDER_VALUE_W)} ${RESET}${base}${" ".repeat(Math.max(0, width - from - size - SLIDER_VALUE_W - 1))}${RESET}`;
   }
   let out = `${base}${fg(line.home ? th.ink : th.dim)}${fit(line.label !== undefined ? ` ${line.label}` : "", line.label !== undefined ? LABEL_W : 1)}${RESET}`;
@@ -126,8 +126,8 @@ function drawLine(line, isFocus, focusIndex, th, width) {
   for (const cell of line.cells) {
     if (cell.x > x) out += `${base}${" ".repeat(cell.x - x)}`;
     const focus = isFocus && usableCells[focusIndex] === cell;
-    const colors = focus ? `${bg(th.accent)}${fg(th.bg)}${BOLD}`
-      : cell.on ? `${bg(th.raised)}${fg(th.accent)}${BOLD}`
+    const colors = focus ? `${th.plain ? REVERSE : ""}${bg(th.accent)}${fg(th.bg)}${BOLD}`
+      : cell.on ? `${th.plain ? UNDERLINE : ""}${bg(th.raised)}${fg(th.accent)}${BOLD}`
         : cell.accent ? `${base}${fg(th.accent)}`
           : cell.label || cell.dim ? `${base}${fg(th.faint)}` : `${base}${fg(th.soft)}`;
     out += `${colors}${cell.text}${RESET}`;

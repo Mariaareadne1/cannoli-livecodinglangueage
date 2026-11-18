@@ -19,9 +19,27 @@ export function windowPainter() {
   let current = null;
   let original = null;
 
+  /* Put the window back the way it was. Synchronous, for exit handlers. */
+  function restore() {
+    if (current === null) return;
+    current = null;
+    if (tty && original) {
+      try {
+        execFileSync("osascript", ["-e", tabScript(tty, `set background color of t to ${original.bg}
+          set normal text color of t to ${original.text}
+          set cursor color of t to ${original.cursor}`)], { stdio: "ignore", timeout: 2000 });
+      } catch {
+        // the window may already be closing
+      }
+    } else if (!tty) {
+      process.stdout.write("\x1b]111\x07\x1b]110\x07\x1b]112\x07");
+    }
+  }
+
   return {
     /** @param {import("../src/themes.js").Theme} th */
     paint(th) {
+      if (th.plain) return restore();
       if (th.bg === current) return;
       current = th.bg;
       if (tty) {
@@ -33,21 +51,7 @@ export function windowPainter() {
         process.stdout.write(`\x1b]11;${th.bg}\x07\x1b]10;${th.ink}\x07\x1b]12;${th.accent}\x07`);
       }
     },
-    /** Put the window back the way it was. Synchronous, for exit handlers. */
-    restore() {
-      if (current === null) return;
-      if (tty && original) {
-        try {
-          execFileSync("osascript", ["-e", tabScript(tty, `set background color of t to ${original.bg}
-            set normal text color of t to ${original.text}
-            set cursor color of t to ${original.cursor}`)], { stdio: "ignore", timeout: 2000 });
-        } catch {
-          // the window may already be closing
-        }
-      } else if (!tty) {
-        process.stdout.write("\x1b]111\x07\x1b]110\x07\x1b]112\x07");
-      }
-    },
+    restore,
   };
 }
 

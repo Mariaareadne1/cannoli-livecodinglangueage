@@ -39,6 +39,7 @@ const COMMANDS = {
 
   --theme=deep|rose            a family: each pane gets its own tone of it
   --theme=deep-white|…         one tone for every pane (ctrl+g in the editor cycles them)
+  --theme=plain                your terminal's own look: no colours, no background
 `);
   },
 };

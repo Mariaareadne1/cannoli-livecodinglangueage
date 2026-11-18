@@ -15,6 +15,7 @@ export const RESET = `${CSI}0m`;
 export const BOLD = `${CSI}1m`;
 export const ITALIC = `${CSI}3m`;
 export const UNDERLINE = `${CSI}4m`;
+export const REVERSE = `${CSI}7m`;
 
 export function fg(hex) {
   const [r, g, b] = rgb(hex);
@@ -31,6 +32,14 @@ export const moveTo = (row, col) => `${CSI}${row};${col}H`;
 const ANSI_RE = /\x1b\[[0-9;:?]*[A-Za-z]/g;
 export const strip = (s) => s.replace(ANSI_RE, "");
 export const visibleLength = (s) => [...strip(s)].length;
+
+const STYLE_RE = /\x1b\[[0-9;:]*m/g;
+const PLAIN_STYLES = new Set([RESET, UNDERLINE, REVERSE]);
+
+/** A frame with no colour or background: only underline and reverse survive, to show what's selected. */
+export function plainFrame(frame) {
+  return frame.replace(STYLE_RE, (code) => (PLAIN_STYLES.has(code) ? code : ""));
+}
 
 /** Plain text cut or padded to exactly `width` cells. */
 export function fit(text, width) {
@@ -66,7 +75,8 @@ export function runPane({ fps = 15, render, onKey, onExit }) {
   const draw = () => {
     const width = out.columns || 80;
     const height = out.rows || 24;
-    const { frame, cursor, theme } = render({ width, height });
+    const { frame: drawn, cursor, theme } = render({ width, height });
+    const frame = theme?.plain ? plainFrame(drawn) : drawn;
     if (theme) painter.paint(theme);   // the window's own background, so no margins show
     const cursorCode = cursor ? `${moveTo(cursor.row, cursor.col)}${CSI}?25h` : `${CSI}?25l`;
     const next = `${CSI}?25l${moveTo(1, 1)}${frame}${cursorCode}`;

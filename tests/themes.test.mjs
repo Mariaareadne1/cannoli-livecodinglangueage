@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { THEMES, FAMILIES, paneTheme, rgb } from "../src/themes.js";
+import { THEMES, THEME_NAMES, FAMILIES, paneTheme, rgb } from "../src/themes.js";
 
 const KEYS = ["bg", "panel", "raised", "line", "ink", "soft", "dim", "faint", "accent", "error", "warn"];
 
@@ -24,4 +24,9 @@ test("families give each pane a tone; a single theme applies to all", () => {
   assert.equal(paneTheme("rose", "reference"), THEMES["rose-berry"]);
   assert.equal(paneTheme("bubblegum", "visual"), THEMES.bubblegum);
   for (const f of Object.values(FAMILIES)) for (const t of Object.values(f.panes)) assert.ok(THEMES[t], t);
+});
+
+test("the plain theme is offered in the terminal but not on the web", () => {
+  assert.equal(paneTheme("plain", "edit"), THEMES.plain);
+  assert.equal(THEME_NAMES.includes("plain"), false);
 });
