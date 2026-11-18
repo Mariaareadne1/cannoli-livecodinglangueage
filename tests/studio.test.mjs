@@ -138,6 +138,6 @@ test("strudel: a pattern as an amount stays in the code", () => {
 
 test("strudel: adding a drum writes a labelled pattern that plays", () => {
   const added = change(STRUDEL, readStrudelStudio(STRUDEL).addDrum("snare"));
-  assert.match(added, /\.room\(\.3\)\nsnare: s\("~ sd ~ sd"\)\nlead/);
+  assert.match(added, /\.room\(\.3\)\nsnare: beat\("backbeat"\)\.s\("sd"\)\nlead/);
   strudelClean(added);
 });

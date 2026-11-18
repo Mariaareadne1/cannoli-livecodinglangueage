@@ -6,6 +6,7 @@
    ============================================================ */
 
 import { catalog } from "./catalog.js";
+import { readHeader } from "./dialect.js";
 
 const MAX_ITEMS = 40;
 export const SOUNDS = [
@@ -18,6 +19,9 @@ const BANKS = ["RolandTR909", "RolandTR808", "RolandTR707", "AkaiLinn", "LinnDru
 const MODES = ["major", "minor", "dorian", "mixolydian", "lydian", "phrygian", "locrian", "minor:pentatonic", "major:pentatonic"];
 const NOTES = ["C", "D", "E", "F", "G", "A", "B", "Bb", "Eb", "F#"];
 const STARTERS = [
+  ["key a minor", "key", "cannoli: every n() in the song follows this key"],
+  ["tempo 120", "tempo", "cannoli: the speed, in beats a minute"],
+  ['beat("fourfloor").s("bd")', "beat", "cannoli: plays on a named rhythm"],
   ['s("bd*4")', "s", "plays a sound or drum pattern"],
   ['note("c3 e3 g3")', "note", "plays notes by name"],
   ['n("0 2 4").scale("C:minor")', "n", "plays steps of a scale"],
@@ -29,8 +33,8 @@ const STARTERS = [
 ];
 
 const IDEAS = [
-  { words: ["kick", "bd", "drum"], lines: () => [['s("bd*4")', "four on the floor"], ['s("bd(3,8)")', "a syncopated Euclidean kick"], ['s("bd").groove("tamborzao")', "cannoli's baile funk rhythm"], ['s("bd [~ bd] ~ bd")', "a broken kick"]] },
-  { words: ["snare", "sd"], lines: () => [['s("~ sd ~ sd")', "beats 2 and 4"], ['s("~ sd ~ [sd sd]")', "a little fill at the end"], ['s("sd(3,8,2)").gain(.6)', "syncopated and quieter"]] },
+  { words: ["kick", "bd", "drum"], lines: () => [['beat("fourfloor").s("bd")', "four on the floor"], ['s("bd(3,8)")', "a syncopated Euclidean kick"], ['beat("tamborzao").s("bd")', "cannoli's baile funk rhythm"], ['s("bd [~ bd] ~ bd")', "a broken kick"]] },
+  { words: ["snare", "sd"], lines: () => [['beat("backbeat").s("sd")', "beats 2 and 4"], ['s("~ sd ~ [sd sd]")', "a little fill at the end"], ['s("sd(3,8,2)").gain(.6)', "syncopated and quieter"]] },
   { words: ["clap", "cp"], lines: () => [['s("~ cp ~ cp")', "beats 2 and 4"], ['s("~ cp ~ cp").room(.4)', "with some space around it"]] },
   { words: ["hat", "hh"], lines: () => [['s("hh*8").gain(.5)', "steady eighth notes"], ['s("hh*16").gain("[.5 .25]*8")', "sixteenths with an accent"], ['s("~ oh ~ oh ~ oh ~ oh").gain(.5)', "open hats between the beats"]] },
   { words: ["bass"], lines: ({ scale }) => [[`n("0 ~ 0 4").scale("${scale}").s("sawtooth").lpf(600).octave(2)`, "a filtered bassline"], [`n("<0 3 4 2>").scale("${scale}").s("supersaw").lpf(400).octave(2)`, "one wide note a cycle"], [`n("0*8").scale("${scale}").s("sawtooth").lpf(sine.range(300, 1500).slow(4)).octave(2)`, "a pulsing, opening filter"]] },
@@ -82,9 +86,12 @@ function stringItems(func) {
 /** Whole lines for a part with this name. */
 export function strudelIdeas(name, text) {
   const lower = name.toLowerCase();
+  const { key } = readHeader(text);
   const scale = text.match(/\.scale\(\s*["']([^"']+)["']/)?.[1] ?? "C:minor";
   const part = IDEAS.find((idea) => idea.words.some((w) => (w.length < 3 ? lower === w : lower.includes(w))));
-  return (part ? part.lines({ scale }) : ANY_PART({ scale })).filter(([line]) => !text.includes(line));
+  // with a key line, the scale goes without saying
+  const fitted = (part ? part.lines({ scale }) : ANY_PART({ scale })).map(([line, doc]) => [key ? line.replace(`.scale("${scale}")`, "") : line, doc]);
+  return fitted.filter(([line]) => !text.includes(line));
 }
 
 /**

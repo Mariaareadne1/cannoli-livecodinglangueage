@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { catalog } from "./catalog.js";
+import { readHeader } from "./dialect.js";
 
 const KEYWORDS = new Set(["const", "let", "var", "function", "return", "if", "else", "for", "while", "await", "async", "new"]);
 const THREAD_COLORS = 6;
@@ -40,10 +41,18 @@ export function tokenize(text) {
   const tokens = [];
   const blocks = blocksIn(text);
   const push = (start, end, cls) => tokens.push({ start, end, text: text.slice(start, end), cls });
+  const header = readHeader(text).ranges;
   let i = 0;
   while (i < text.length) {
     const ch = text[i];
     if (/\s/.test(ch)) { i++; continue; }
+    const line = header.find(([start, end]) => i >= start && i < end);
+    if (line) {
+      const words = [...text.slice(i, line[1]).matchAll(/\S+/g)];
+      words.forEach((m, w) => push(i + m.index, i + m.index + m[0].length, w === 0 ? "set" : "name"));
+      i = line[1];
+      continue;
+    }
     if (text.startsWith("//", i)) {
       const end = text.indexOf("\n", i);
       const stop = end < 0 ? text.length : end;

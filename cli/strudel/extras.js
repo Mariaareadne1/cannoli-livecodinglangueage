@@ -20,9 +20,18 @@ export const EXTRA_DOCS = {
   pump: { args: "amount", doc: "cannoli: ducks on every beat, breathing with the kick (0 to 1)", example: 'note("c2").s("sawtooth").pump(.7)' },
   air: { args: "amount", doc: "cannoli: a soft layer of noise on each note (0 to 1)", example: 'note("c4").s("sine").air(.4)' },
   mirror: { args: "", doc: "cannoli: plays the cycle forwards then backwards, twice as fast", example: 'note("c3 e3 g3").mirror()' },
+  beat: { args: "name", doc: `cannoli: a named rhythm to play on: ${Object.keys(BEATS).join(", ")}`, example: 'beat("fourfloor").s("bd")' },
   groove: { args: "name", doc: `cannoli: plays on a named rhythm: ${Object.keys(BEATS).join(", ")}`, example: 's("bd").groove("tamborzao")' },
   style: { args: "name", doc: `cannoli: sets the tempo of a style: ${Object.keys(STYLES).join(", ")}`, example: 'style("funk")' },
 };
+
+const DRUM_SOUNDS = new Set(["bd", "sd", "hh", "oh", "cp", "rim", "rm", "lt", "mt", "ht", "cb", "cr", "rd", "sh", "tb", "perc"]);
+
+/* A step of the scale that hasn't been given a pitch yet, on a sound that can play one. */
+function followsKey(value) {
+  if (typeof value !== "object" || value === null || value.n === undefined || value.note !== undefined) return false;
+  return !DRUM_SOUNDS.has(String(value.s ?? "").split(":")[0]);
+}
 
 /** The rhythm of a named groove, as mini-notation. */
 export function grooveSteps(name) {
@@ -36,7 +45,7 @@ export function grooveSteps(name) {
  * @returns {object} the words to add to Strudel's scope
  */
 export function installExtras(core, { mini }) {
-  const { Pattern, fastcat, silence, reify } = core;
+  const { Pattern, fastcat, silence, reify, stack, pure } = core;
   // words in quotes reach us as patterns
   const word = (value) => (value?._Pattern || value?.firstCycleValues ? value.firstCycleValues[0] : value);
   const method = (name, build) => {
@@ -49,6 +58,11 @@ export function installExtras(core, { mini }) {
   method("air", (pat, x = 0.4) => pat.noise(x));
   method("mirror", (pat) => fastcat(pat, pat.rev()));
   method("groove", (pat, name) => pat.struct(mini(grooveSteps(word(name)))));
+  // Strudel's own .beat(positions, steps) still works: only a groove's name means something new
+  const strudelBeat = Pattern.prototype.beat;
+  Pattern.prototype.beat = function beat(first, ...rest) {
+    return rest.length === 0 && BEATS[word(first)] ? this.struct(mini(grooveSteps(word(first)))) : strudelBeat.call(this, first, ...rest);
+  };
   for (const name of WEB_VISUALS) {
     for (const visual of [name, `_${name}`]) {
       if (!Pattern.prototype[visual]) method(visual, (pat) => pat);
@@ -56,6 +70,13 @@ export function installExtras(core, { mini }) {
   }
   return {
     groove: (name) => mini(grooveSteps(word(name))),
+    beat: (first, ...rest) => (rest.length === 0 && BEATS[word(first)]
+      ? pure({}).struct(mini(grooveSteps(word(first))))
+      : core.beat(first, ...rest)),
+    /* The key line: scale steps follow the song's key, while drums keep their sample numbers. */
+    inKey: (scale) => (pat) => stack(pat.filterValues(followsKey).scale(scale), pat.filterValues((v) => !followsKey(v))),
+    // a slider in the code is its number here; the editors draw the slider
+    sliderWithID: (_id, value) => pure(value),
     style(name) {
       const chosen = STYLES[word(name)];
       if (!chosen) throw new Error(`"${word(name)}" isn't a style. Try: ${Object.keys(STYLES).join(", ")}`);

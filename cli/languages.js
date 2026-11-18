@@ -102,7 +102,7 @@ async function strudel() {
       const index = blocks.findLastIndex((b) => b.start <= offset);
       if (index < 0) return engine.preview(text).catch(() => {});
       const body = text.slice(blocks[index].start, blocks[index + 1]?.start ?? text.length).replace(/^[A-Za-z_$][\w$]*:\s*/, "");
-      return engine.preview(body).catch(() => {});
+      return engine.preview(body, text).catch(() => {});
     },
     apply: (engine, program) => engine.update(program),
     makeEngine: (opts) => new StrudelEngine(opts).boot(),

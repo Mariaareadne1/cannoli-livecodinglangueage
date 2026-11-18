@@ -8,6 +8,8 @@ import { explainStrudelLine, strudelReference } from "../cli/strudel/guide-text.
 import { drumOf } from "../cli/strudel/engine.js";
 import { grooveSteps, EXTRA_DOCS } from "../cli/strudel/extras.js";
 import { cachingFetch } from "../cli/strudel/runtime.js";
+import { prepareSong, setupCode } from "../cli/strudel/dialect.js";
+import { readStrudelStudio } from "../cli/strudel/studio.js";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -15,6 +17,8 @@ import path from "node:path";
 const language = await loadLanguage("song.strudel");
 const { compile } = language;
 const { core, transpiler } = await (await import("../cli/strudel/runtime.js")).loadStrudel();
+
+const loadExtras = async () => (await (await import("../cli/strudel/runtime.js")).loadStrudel()).extras;
 
 async function haps(code) {
   const { evaluate } = core;
@@ -206,4 +210,41 @@ test("the engine plays a song and tells the panes what's sounding", async (t) =>
   engine.stop({ now: true });
   assert.equal(engine.playing, false);
   assert.equal(engine.position(), null);
+});
+
+test("key and tempo lines stay out of Strudel's way", () => {
+  const song = 'key a minor\ntempo 120\nlead: n("0 2").s("sine")\n';
+  assert.deepEqual(compile(song).errors, []);
+  const { settings } = compile(song).program;
+  assert.equal(settings.tempo, 120);
+  assert.equal(settings.keys[0].name, "a minor");
+  const prepared = prepareSong(song);
+  assert.equal(prepared.length, song.length);
+  assert.equal(prepared.indexOf("lead"), song.indexOf("lead"));
+  assert.equal(setupCode(song), 'setcpm(120/4);all(inKey("A:minor"));');
+});
+
+test("the key line puts scale steps in key but leaves drums and written notes alone", async () => {
+  const { pattern } = await core.evaluate('stack(n("0 2").s("sine"), n("1").s("hh"), note("c5").s("sine"))', transpiler);
+  const haps = (await loadExtras()).inKey("A:minor")(pattern).queryArc(0, 1).filter((h) => h.hasOnset());
+  const notes = haps.map((h) => h.value.note).filter((n) => n !== undefined).sort();
+  assert.deepEqual(notes, ["A3", "C4", "c5"].sort());
+  assert.equal(haps.find((h) => h.value.s === "hh").value.n, 1);
+});
+
+test("beat plays a named rhythm, and Strudel's own beat still works", async () => {
+  const named = await haps('beat("backbeat").s("sd")');
+  assert.deepEqual(named.map((h) => h.whole.begin.valueOf()), [0.25, 0.75]);
+  assert.equal(named[0].value.s, "sd");
+  assert.equal((await haps('s("bd").beat("backbeat")')).length, 2);
+  assert.equal((await haps('s("bd").beat("0,8", 16)')).length, 2);
+});
+
+test("the kit reads a named beat and rewrites it", () => {
+  const song = 'kick: beat("fourfloor").s("bd").gain(.8)\n';
+  const studio = readStrudelStudio(song);
+  assert.equal(studio.drums[0].steps.filter(Boolean).length, 4);
+  const steps = studio.drums[0].steps.map((on, i) => (i === 2 ? true : on));
+  const c = studio.setSteps(0, steps);
+  assert.equal(song.slice(0, c.start) + c.text + song.slice(c.end), 'kick: s("bd bd bd ~ bd ~ bd ~").gain(.8)\n');
 });

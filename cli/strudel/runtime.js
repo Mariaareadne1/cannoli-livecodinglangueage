@@ -13,7 +13,6 @@ import os from "node:os";
 import path from "node:path";
 import { register } from "node:module";
 
-const SOUND_CDN = "https://strudel.b-cdn.net";
 const LOG_LIMIT = 50;
 const noop = () => {};
 
@@ -79,7 +78,7 @@ async function load() {
   const { installExtras } = await import("./extras.js");
   const extras = installExtras(core, mini);
   await core.evalScope(Promise.resolve(core), Promise.resolve(mini), Promise.resolve(tonal), Promise.resolve(extras));
-  return { core, mini, tonal, transpiler, logs };
+  return { core, mini, tonal, transpiler, logs, extras };
 }
 
 /** Load the audio engine and connect it to this AudioContext class. */
@@ -95,25 +94,9 @@ export async function loadAudio(AudioContextClass, native) {
   return { superdough, webaudio };
 }
 
-/* The same sounds as strudel.cc (website/src/repl/prebake.mjs). One that can't load doesn't stop the rest. */
-export async function loadSounds({ superdough, webaudio }) {
-  const { samples, aliasBank, registerSynthSounds, registerZZFXSounds } = superdough;
-  const banks = [
-    ["piano.json", "piano/", {}],
-    ["vcsl.json", "VCSL/", {}],
-    ["tidal-drum-machines.json", "tidal-drum-machines/machines/", { tag: "drum-machines" }],
-    ["uzu-drumkit.json", "uzu-drumkit/", { tag: "drum-machines" }],
-    ["uzu-wavetables.json", "uzu-wavetables/", {}],
-    ["mridangam.json", "mrid/", { tag: "drum-machines" }],
-  ];
-  const results = await Promise.allSettled([
-    registerSynthSounds(),
-    registerZZFXSounds(),
-    import("@strudel/soundfonts").then(({ registerSoundfonts }) => registerSoundfonts()),
-    ...banks.map(([json, base, options]) => samples(`${SOUND_CDN}/${json}`, `${SOUND_CDN}/${base}`, { prebake: true, ...options })),
-    samples("github:tidalcycles/dirt-samples"),
-  ]);
-  await Promise.resolve(aliasBank(`${SOUND_CDN}/tidal-drum-machines-alias.json`)).catch(noop);
-  void webaudio;
-  return results.filter((r) => r.status === "rejected").map((r) => r.reason?.message ?? String(r.reason));
+/** Every sound strudel.cc has, for the terminal. */
+export async function loadSounds({ superdough }) {
+  const { loadSounds: load } = await import("./player.js");
+  const { registerSoundfonts } = await import("@strudel/soundfonts");
+  return load({ ...superdough, registerSoundfonts });
 }

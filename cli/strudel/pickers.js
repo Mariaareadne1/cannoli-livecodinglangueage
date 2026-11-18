@@ -17,6 +17,8 @@ import { euclidSteps } from "../../src/core/verbs.js";
 import { ringName } from "../../src/editor/euclid-ring.js";
 import { blocksIn } from "./highlight.js";
 import { SOUNDS } from "./complete.js";
+import { readHeader } from "./dialect.js";
+import { cannoliToolAt } from "../panel/cannoli-tools.js";
 
 export const DRUM_WORDS = new Set(["bd", "sd", "hh", "oh", "cp", "rim", "lt", "mt", "ht", "cb", "cr", "rd", "sh", "tb", "perc"]);
 const BEAT_STEPS = 16;
@@ -131,6 +133,8 @@ function writeScale({ root, octave, mode }) {
 }
 
 function songScale(text) {
+  const { key } = readHeader(text);
+  if (key) return { root: key.root, octave: "", mode: key.mode };
   const m = text.match(/\.scale\(\s*["']([^"']+)["']/);
   return (m && parseScale(m[1])) ?? DEFAULT_SCALE;
 }
@@ -339,7 +343,7 @@ function chordsPicker(text, line, str) {
   const words = (str.body.match(/^<(.*)>$/)?.[1] ?? str.body).trim().split(/\s+/).filter(Boolean);
   if (!words.every((w) => /^[A-G][#b]?[\w^+#-]*$/.test(w))) return null;
   const scale = songScale(text);
-  const key = text.includes(".scale(") ? scale : { root: "a", mode: "minor" };
+  const key = text.includes(".scale(") || readHeader(text).key ? scale : { root: "a", mode: "minor" };
   const options = chordOptions(key).map((o) => ({ ...o, word: o.name }));
   const degree = (word) => options.findIndex((o) => o.name === word);
   return {
@@ -401,7 +405,7 @@ function pickerFor(text, line, call, label, opts) {
   const { name } = call;
   if (name === "chord" && str) return chordsPicker(text, line, str);
   if (name === "scale" && str) return keyPicker(text, str);
-  if (name === "groove" && str && BEATS[str.body]) return groovePicker(text, line, str, label);
+  if ((name === "groove" || name === "beat") && str && BEATS[str.body]) return groovePicker(text, line, str, label);
   if ((name === "s" || name === "sound") && str) {
     const turned = miniRing(line, str);
     if (turned) return turned;
@@ -426,6 +430,7 @@ function pickerFor(text, line, call, label, opts) {
 export function strudelPickerAt(text, cursor, opts = {}) {
   const line = lineAt(text, cursor);
   if (!line.code.trim()) return null;
+  if (/^\s*(key|tempo)\s/.test(line.code)) return cannoliToolAt(text, cursor, opts);
   const column = cursor - line.start;
   const label = line.code.match(/^\s*([A-Za-z_$][\w$]*):/)?.[1] ?? null;
   const blank = line.code.match(/^\s*([A-Za-z_][\w]*):\s*$/)?.[1];

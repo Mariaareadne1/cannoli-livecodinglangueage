@@ -48,16 +48,34 @@ function readEffect(effect, call) {
   return { ...effect, value: effect.rest, written: true, locked: call.args.trim(), call };
 }
 
+/* beat("fourfloor").s("bd"): a named rhythm and the drum that plays it. */
+function namedBeat(calls, root, bodyStart) {
+  const named = stringOf(root);
+  const sound = calls.find((c) => c.dotted && (c.name === "s" || c.name === "sound") && c.start === root.close + 1);
+  const drum = sound && stringOf(sound)?.body;
+  if (!BEATS[named?.body] || !drum) return null;
+  return {
+    drum,
+    steps: [...BEATS[named.body].steps].map((c) => c === "x"),
+    apply: (steps) => {
+      const pattern = steps.map((on) => (on ? "x" : ".")).join("");
+      const groove = Object.keys(BEATS).find((name) => BEATS[name].steps === pattern);
+      return { start: bodyStart + root.start, end: bodyStart + sound.close + 1, text: groove ? `beat("${groove}").s("${drum}")` : `s("${writeBeat(drum, steps)}")` };
+    },
+  };
+}
+
 function readPart(text, statement, index) {
   const bodyStart = statement.start + statement.name.length + 1;
   const body = text.slice(bodyStart, statement.end);
   const calls = chainCalls(body);
-  const root = calls.find((c) => !c.dotted && (c.name === "s" || c.name === "sound"));
-  const str = root && stringOf(root);
+  const root = calls.find((c) => !c.dotted && ["s", "sound", "beat"].includes(c.name));
+  const named = root?.name === "beat" ? namedBeat(calls, root, bodyStart) : null;
+  const str = root && root.name !== "beat" ? stringOf(root) : null;
   const name = statement.name.replace(MUTED_RE, "");
   const words = str ? str.body.match(/[A-Za-z_]\w*/g) ?? [] : [];
-  const isDrum = Boolean(THREAD_DRUMS[name.toLowerCase()]) || (words.length > 0 && words.every((w) => DRUM_WORDS.has(w)));
-  const picker = str ? beatPicker(text, { start: bodyStart, code: body }, root, str, name) : null;
+  const isDrum = Boolean(THREAD_DRUMS[name.toLowerCase()]) || DRUM_WORDS.has(named?.drum) || (words.length > 0 && words.every((w) => DRUM_WORDS.has(w)));
+  const picker = named ?? (str ? beatPicker(text, { start: bodyStart, code: body }, root, str, name) : null);
   return {
     id: index,
     name: name.includes("$") || name === "" ? `part ${index + 1}` : name,
@@ -99,8 +117,7 @@ function effectEdit(text, part, effect, value) {
 }
 
 function addDrumEdit(text, parts, entry) {
-  const steps = [...BEATS[entry.groove].steps].map((c) => c === "x");
-  const line = `${entry.name}: s("${writeBeat(entry.drum, steps)}")`;
+  const line = `${entry.name}: beat("${entry.groove}").s("${entry.drum}")`;
   const lastDrum = parts.filter((p) => p.isDrum).at(-1);
   if (lastDrum) return { start: lastDrum.end, end: lastDrum.end, text: `\n${line}` };
   if (parts.length) return { start: parts[0].start, end: parts[0].start, text: `${line}\n` };

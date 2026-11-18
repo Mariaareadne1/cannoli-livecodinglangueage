@@ -7,6 +7,7 @@
 import { STYLES } from "../../src/core/styles.js";
 import { closest } from "../../src/lang/errors.js";
 import { blocksIn, tokenize } from "./highlight.js";
+import { prepareSong, readHeader } from "./dialect.js";
 
 const DEFAULT_CPS = 0.5;
 const SECONDS_PER_MINUTE = 60;
@@ -59,6 +60,8 @@ function number(expression) {
 }
 
 function tempoOf(text) {
+  const written = readHeader(text).tempo;
+  if (written) return written;
   const cpm = text.match(/\bsetc[pP]m\(([^()]+)\)/);
   if (cpm && number(cpm[1])) return number(cpm[1]) * BEATS_PER_CYCLE;
   const cps = text.match(/\bsetc[pP]s\(([^()]+)\)/);
@@ -84,13 +87,14 @@ export function checkSong(text, { transpiler, known }) {
   let warnings = [];
   if (text.trim()) {
     try {
-      transpiler(text, { emitMiniLocations: true, wrapAsync: true, addReturn: true });
+      transpiler(prepareSong(text), { emitMiniLocations: true, wrapAsync: true, addReturn: true });
       warnings = typoWarnings(text, known);
     } catch (err) {
       errors.push(syntaxProblem(text, err, transpiler));
     }
   }
   const scale = text.match(/\.scale\(\s*["']([A-Ga-g][#b]?\d*):?(\w+)?/);
+  const { key } = readHeader(text);
   const style = text.match(/\bstyle\(\s*["'](\w+)["']\s*\)/)?.[1] ?? null;
   return {
     errors, warnings, symbols: {},
@@ -99,7 +103,7 @@ export function checkSong(text, { transpiler, known }) {
       threads: threadNames(text).map((name) => ({ name })),
       settings: {
         tempo: tempoOf(text), beats: BEATS_PER_CYCLE, style, chords: [],
-        keys: scale ? [{ mode: scale[2] ?? "major", name: `${scale[1]} ${scale[2] ?? "major"}` }] : [],
+        keys: key ? [{ mode: key.mode, name: key.name }] : scale ? [{ mode: scale[2] ?? "major", name: `${scale[1]} ${scale[2] ?? "major"}` }] : [],
       },
     },
   };
