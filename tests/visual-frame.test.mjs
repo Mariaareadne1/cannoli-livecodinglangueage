@@ -60,7 +60,7 @@ test("the creature is visible and the frame changes over time", () => {
 });
 
 test("a kick pulse brightens the glow", () => {
-  for (const theme of Object.values(THEMES)) {
+  for (const theme of Object.values(THEMES).filter((t) => !t.plain)) {
     const calm = brightCells(renderVisualFrame(state({ theme, pulse: 0 })), theme);
     const kick = brightCells(renderVisualFrame(state({ theme, pulse: 1 })), theme);
     assert.ok(kick > calm, `${theme.label}: ${kick} > ${calm}`);

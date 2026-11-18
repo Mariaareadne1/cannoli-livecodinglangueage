@@ -31,7 +31,7 @@ function withoutComments(text) {
 }
 
 /* Each thread and the text it covers, continuation lines included. */
-function threadsIn(text) {
+export function threadsIn(text) {
   const masked = withoutComments(text);
   const lines = masked.split("\n");
   const threads = [];

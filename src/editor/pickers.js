@@ -77,7 +77,7 @@ export function pickerAt(text, cursor, opts = {}) {
   return bars ?? part;
 }
 
-function lineAt(text, cursor) {
+export function lineAt(text, cursor) {
   const start = text.lastIndexOf("\n", cursor - 1) + 1;
   const newline = text.indexOf("\n", cursor);
   const end = newline < 0 ? text.length : newline;
@@ -89,7 +89,7 @@ function lineAt(text, cursor) {
 
 /* ---------- the beat grid ---------- */
 
-function beatPicker(line, text) {
+export function beatPicker(line, text) {
   const thread = line.code.match(/^([A-Za-z]\w*):(\s*)(.*)$/);
   if (!thread) return null;
   const [, name, , body] = thread;
@@ -142,7 +142,7 @@ export function applyBeat(picker, steps) {
   return { start: line.bodyStart, end: hasComment ? codeEnd - line.code.match(/\s*$/)[0].length : line.end, text: ` ${body}` };
 }
 
-function writeSteps(steps) {
+export function writeSteps(steps) {
   const key = steps.map((on) => (on ? "x" : ".")).join("");
   const groove = Object.entries(BEATS).find(([, b]) => b.steps === key)?.[0];
   if (groove) return `beat ${groove}`;

@@ -18,7 +18,7 @@ import { ringName } from "../../src/editor/euclid-ring.js";
 import { blocksIn } from "./highlight.js";
 import { SOUNDS } from "./complete.js";
 
-const DRUM_WORDS = new Set(["bd", "sd", "hh", "oh", "cp", "rim", "lt", "mt", "ht", "cb", "cr", "rd", "sh", "tb", "perc"]);
+export const DRUM_WORDS = new Set(["bd", "sd", "hh", "oh", "cp", "rim", "lt", "mt", "ht", "cb", "cr", "rd", "sh", "tb", "perc"]);
 const BEAT_STEPS = 16;
 const MELODY_STEPS = 8;
 const BARS = 16;
@@ -85,7 +85,7 @@ export function callsIn(code) {
 }
 
 /* Arguments split at top-level commas, each with its place in the line. */
-function splitArgs(call) {
+export function splitArgs(call) {
   const parts = [];
   let depth = 0;
   let quote = null;
@@ -108,7 +108,7 @@ function splitArgs(call) {
 }
 
 /* The one quoted string a call was given, or null. */
-function stringOf(call) {
+export function stringOf(call) {
   const [arg, extra] = splitArgs(call);
   if (!arg || extra) return null;
   const m = arg.text.match(/^(["'`])(.*)\1$/);
@@ -161,7 +161,7 @@ export function writeBeat(word, steps) {
   return cells.map((on) => (on ? word : "~")).join(" ");
 }
 
-function beatPicker(text, line, call, str, name) {
+export function beatPicker(text, line, call, str, name) {
   const read = readBeat(str.body);
   if (!read) return null;
   const after = callsIn(line.code).find((c) => c.name === "groove" && c.start === call.close + 1);
@@ -448,7 +448,7 @@ export function strudelPickerAt(text, cursor, opts = {}) {
 
 const MASK_RE = /\s*\.mask\(\s*["']<([01!\d\s]+)>["']\s*\)/;
 
-function statements(text) {
+export function statements(text) {
   const blocks = blocksIn(text);
   return blocks.map((block, i) => {
     const limit = blocks[i + 1]?.start ?? text.length;
