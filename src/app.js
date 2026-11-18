@@ -9,6 +9,8 @@ import { Engine } from "./audio/engine.js";
 import { findSliders, applySlider } from "./editor/pickers.js";
 import { renderBar } from "./core/render.js";
 import { createTimelinePanel } from "./timeline-panel.js";
+import { createStudioPanel } from "./studio-panel.js";
+import { createControlPanel } from "./control-panel.js";
 import { createEditor } from "./editor/editor.js";
 import { EXAMPLES } from "./examples.js";
 import { codeFromUrl } from "./share.js";
@@ -140,6 +142,18 @@ const timeline = createTimelinePanel({
   edit: (change) => editor.edit(change),
 });
 
+const studio = createStudioPanel({
+  kitRoot: $("kit"),
+  mixRoot: $("mix"),
+  getText: () => editor.value,
+  getCaret: () => editor.caret,
+  edit: (change) => editor.edit(change),
+  slide: (change) => editor.slideTo(change),
+  hear: previewRing,
+});
+
+const control = createControlPanel({ root: $("control") });
+
 /* ---------- checking as you type ---------- */
 
 function lint() {
@@ -156,6 +170,7 @@ function lint() {
   renderProblems(problems);
   renderSliders();
   timeline.update(result);
+  studio.update();
   return result;
 }
 
@@ -423,7 +438,8 @@ function savePrefs(change) {
 
 /* ---------- side panel: live / reference, and the divider ---------- */
 
-const SIDE_DEFAULT_W = { live: "min(380px, 38vw)", timeline: "min(460px, 42vw)", reference: "46vw" };
+const SIDE_DEFAULT_W = { live: "min(380px, 38vw)", kit: "min(600px, 58vw)", mix: "min(400px, 40vw)", timeline: "min(460px, 42vw)", reference: "46vw", control: "min(480px, 44vw)" };
+const SIDE_TABS_REMEMBERED = ["reference", "timeline", "kit", "mix", "control"];
 const DIVIDER_STEP_PX = 24;
 
 function openSideTab(name) {
@@ -435,6 +451,8 @@ function openSideTab(name) {
   setSideWidth(prefs.sideWidth?.[name] ?? SIDE_DEFAULT_W[name]);
   savePrefs({ sideTab: name });
   if (name === "timeline") timeline.draw();
+  if (name === "kit" || name === "mix") studio.open();
+  if (name === "control") control.connect();
 }
 
 function currentSideTab() {
@@ -485,7 +503,7 @@ window.addEventListener("message", (e) => {
   say(`loaded "${e.data.name ?? "song"}" — ctrl+enter to hear it (ctrl+z brings back what you had)`);
 });
 
-openSideTab(["reference", "timeline"].includes(prefs.sideTab) ? prefs.sideTab : "live");
+openSideTab(SIDE_TABS_REMEMBERED.includes(prefs.sideTab) ? prefs.sideTab : "live");
 
 /* ---------- helpers ---------- */
 

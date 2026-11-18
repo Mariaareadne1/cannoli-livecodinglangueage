@@ -1,0 +1,24 @@
+:root { --bg: #050c1b; --bg-2: #09152b; --bg-3: #0f1f3d; --line: #16284c; --ink: #f4f8ff; --soft: #9fd4ff; --ink-dim: #8593ad; --accent: #c4ecff; }
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.65 "IBM Plex Mono", ui-monospace, Menlo, monospace; }
+.page { max-width: 760px; margin: 0 auto; padding: 32px 20px 72px; }
+.back { margin: 0 0 28px; font-size: 13px; }
+a { color: var(--soft); }
+h1 { margin: 0 0 12px; font-size: 32px; line-height: 1.2; letter-spacing: -0.02em; }
+h1 span { color: var(--accent); }
+h2 { margin: 44px 0 12px; font-size: 18px; }
+.lead { margin: 0; color: var(--ink-dim); }
+ol { padding-left: 24px; }
+li { margin-bottom: 10px; }
+pre { margin: 10px 0; padding: 12px 14px; overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--bg-2); font: inherit; font-size: 14px; }
+code { color: var(--soft); font: inherit; font-size: 0.94em; overflow-wrap: anywhere; }
+kbd { padding: 1px 6px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg-3); font: inherit; font-size: 0.84em; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 9px 12px 9px 0; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { width: 9.5em; font-weight: 600; white-space: nowrap; }
+td { color: var(--ink-dim); }
+@media (max-width: 560px) {
+  th, td { display: block; width: 100%; padding: 2px 0; border: 0; }
+  th { padding-top: 12px; border-top: 1px solid var(--line); }
+}

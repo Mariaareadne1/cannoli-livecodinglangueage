@@ -11,6 +11,7 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { controlApi } from "./control-api.js";
 
 const ROOT = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 const PORT = Number(process.argv[2]) || 5460;
@@ -19,7 +20,12 @@ const TYPES = {
   ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml", ".cannoli": "text/plain",
 };
 
-http.createServer((req, res) => {
+// for trying the page out: the buttons answer without opening any windows
+const pretend = process.env.CANNOLI_CONTROL_DRY ? { open: async () => {} } : {};
+const api = controlApi({ root: ROOT, port: PORT, ...pretend });
+
+http.createServer(async (req, res) => {
+  if (await api(req, res)) return;
   const url = new URL(req.url, "http://localhost");
   const file = path.join(ROOT, decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname));
   if (!file.startsWith(ROOT + path.sep)) {

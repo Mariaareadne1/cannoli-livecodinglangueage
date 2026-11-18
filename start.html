@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to use cannoli</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="start.css" />
+  <script type="module">
+    import { applyTheme, savedTheme } from "./src/apply-theme.js";
+    applyTheme(savedTheme());
+  </script>
+</head>
+<body>
+<main class="page">
+  <p class="back"><a href="index.html">← back to the editor</a></p>
+  <h1>How to use cannoli<span>~</span></h1>
+  <p class="lead">cannoli is a way to make music by writing code. You can use it in this web page, or in your terminal with real Strudel.</p>
+
+  <h2>Your first sound</h2>
+  <ol>
+    <li>Open the <a href="index.html">editor</a> and type this line:
+      <pre>kick: beat fourfloor &gt; bd</pre></li>
+    <li>Press <kbd>ctrl</kbd> <kbd>enter</kbd> to play. On a Mac you can use <kbd>cmd</kbd> <kbd>enter</kbd>.</li>
+    <li>Change the code and press it again. The change lands on the next bar.</li>
+    <li>Press <kbd>ctrl</kbd> <kbd>.</kbd> to stop.</li>
+  </ol>
+
+  <h2>Tools in the web editor</h2>
+  <p>Everything you click writes code, so you can always read what changed.</p>
+  <table>
+    <tbody>
+      <tr><th>kit</th><td>All your drums on one grid, lined up by beats. Click steps, press <b>M</b> to mute, or add a drum.</td></tr>
+      <tr><th>mix</th><td>Mute any part and slide its effects. Slide an effect back to off to remove it from the code.</td></tr>
+      <tr><th>timeline</th><td>Choose which bars each part plays in.</td></tr>
+      <tr><th>reference</th><td>Every word in the language, with lines to copy.</td></tr>
+      <tr><th>control</th><td>Open terminal windows from this page.</td></tr>
+      <tr><th>under a line</th><td>Put the cursor on a drum line, melody, chord, sound or number to get a grid or slider right there.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Set up the terminal</h2>
+  <p>You need <a href="https://nodejs.org" rel="noopener">Node.js</a>. In the project folder, run:</p>
+  <pre>npm install
+npm run web</pre>
+  <p>Then visit <code>localhost:5460</code> and open the <b>control</b> tab. Choose a song and a look, then press <b>open</b> on the window you want. The first time, your Mac asks to let it control Terminal. Allow it.</p>
+
+  <h2>Terminal windows</h2>
+  <table>
+    <tbody>
+      <tr><th>Everything</th><td>All five windows, side by side.</td></tr>
+      <tr><th>Code editor</th><td>Write and play. This is the one that makes the sound.</td></tr>
+      <tr><th>Guide</th><td>Explains the line you're on.</td></tr>
+      <tr><th>Reference</th><td>Every word in the language.</td></tr>
+      <tr><th>Visual</th><td>A shark that moves with the music.</td></tr>
+      <tr><th>Threads</th><td>What each part plays this bar.</td></tr>
+    </tbody>
+  </table>
+  <p>Choose <b>plain terminal</b> as the look for no colours and no background, just your terminal as it is.</p>
+
+  <h2>Keys in the terminal editor</h2>
+  <table>
+    <tbody>
+      <tr><th><kbd>ctrl</kbd> <kbd>s</kbd></th><td>Play, or apply your changes.</td></tr>
+      <tr><th><kbd>ctrl</kbd> <kbd>t</kbd></th><td>Stop at the end of the bar.</td></tr>
+      <tr><th><kbd>ctrl</kbd> <kbd>d</kbd></th><td>Drum kit.</td></tr>
+      <tr><th><kbd>ctrl</kbd> <kbd>x</kbd></th><td>Mixer: mute and effects.</td></tr>
+      <tr><th><kbd>ctrl</kbd> <kbd>l</kbd></th><td>Song timeline.</td></tr>
+      <tr><th><kbd>ctrl</kbd> <kbd>b</kbd></th><td>Move the keyboard into a grid, or back to the code.</td></tr>
+      <tr><th><kbd>ctrl</kbd> <kbd>g</kbd></th><td>Next theme.</td></tr>
+      <tr><th><kbd>ctrl</kbd> <kbd>q</kbd></th><td>Save and quit.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How muting is written</h2>
+  <table>
+    <tbody>
+      <tr><th>cannoli</th><td><code>kick: beat fourfloor &gt; bd &gt; hush</code></td></tr>
+      <tr><th>Strudel</th><td><code>_kick: s("bd*4")</code></td></tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

@@ -199,6 +199,7 @@ around it:
 | `--all` | all five: editor, guide, visual, reference and threads |
 | `--threads` / `--reference` | add just that one |
 | `--theme=deep` | a theme family (each pane gets its own tone of it) |
+| `--theme=plain` | no colours or background, only your terminal's own look |
 | `--dry` | show what it would open without opening anything |
 
 If the song file doesn't exist yet, the editor starts on an empty page and
@@ -228,10 +229,42 @@ They find the editor by themselves.
 | `ctrl+e` | choose a style (rave, house, funk, chill, none). It rewrites the `style` line; while playing, it lands on the next bar |
 | `ctrl+f` | apply the fix for the problem on this line |
 | `ctrl+b` | move the keyboard into the open grid, or back to the code (`tab` also moves in) |
+| `ctrl+d` | open the drum kit |
+| `ctrl+x` | open the mixer: mute and effects |
 | `ctrl+l` | open the song timeline |
 | `ctrl+g` | next theme |
 | `ctrl+z` / `ctrl+y` | undo / redo |
 | `ctrl+q` | save and quit |
+
+### Drum kit and mixer
+
+The **drum kit** (`ctrl+d`) puts every drum part on one grid, lined up by beats. Click or drag along a row to change its steps, press `[ ]` to mute a part, or add a new drum.
+
+The **mixer** (`ctrl+x`) lists every part, with a mute button and a slider for each effect. Slide an effect back to off and it leaves the code. Both panels sit at the bottom of the screen, so you can watch the code change as you go.
+
+| Action | In a `.cannoli` file | In a `.strudel` file |
+|---|---|---|
+| Mute | `kick: beat fourfloor > bd > hush` | `_kick: s("bd*4")` |
+| Add reverb | `lead: 0 2 > sine > bloom 0.4` | `lead: n("0 2").s("sine").room(0.4)` |
+| Change a step | `kick: 0 0 . . 0 . . .` | `kick: s("bd bd ~ ~ bd ~ ~ ~")` |
+
+The web app has the same tools in its **kit** and **mix** tabs.
+
+### Plain terminal look
+
+For no colours and no background, only your terminal as it already looks:
+
+```bash
+cannoli stage songs/first-steps.strudel --theme=plain
+```
+
+`ctrl+g` in the editor also reaches it. Selected cells are shown in reverse video, and chosen ones are underlined.
+
+### Control center
+
+Run the web app with `npm run web`, visit `localhost:5460`, and open the **control** tab. Choose a song and a look, then press **open** to start any terminal window, or **Everything** for all five. On a Mac, the first time, allow it to control Terminal.
+
+The buttons only work through `npm run web`, because a web page can't open windows by itself. The helper only answers this computer, and only opens cannoli's own windows on songs in `songs/`. On a hosted copy or another system, each window has a command to copy instead. The **how to** button at the top of the web app explains the whole thing.
 
 ### Grids and pickers
 

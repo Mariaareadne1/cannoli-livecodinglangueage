@@ -972,6 +972,7 @@ export function createEditor(root, { value, onRun, onStop, onInput, onSlide = ()
 
   return {
     get value() { return input.value; },
+    get caret() { return input.selectionStart; },
     focus() { input.focus(); },
     setValue(text) {
       replaceRange(0, input.value.length, text);

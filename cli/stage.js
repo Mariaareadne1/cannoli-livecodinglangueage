@@ -126,10 +126,10 @@ function has(bin) {
   return spawnSync("which", [bin], { stdio: "ignore" }).status === 0;
 }
 
-function shellQuote(s) {
+export function shellQuote(s) {
   return /^[\w./=-]+$/.test(s) ? s : `'${s.replace(/'/g, "'\\''")}'`;
 }
 
-function appleQuote(s) {
+export function appleQuote(s) {
   return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }

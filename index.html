@@ -33,6 +33,7 @@
       <span class="visually-hidden">Load an example</span>
       <select id="examples" aria-label="Load an example"></select>
     </label>
+    <a class="btn" href="start.html" target="_blank" rel="noopener" title="how to use cannoli, on the web and in the terminal">how to</a>
     <button class="btn" id="referenceBtn" type="button" title="the cheat sheet, next to the editor">reference</button>
     <button class="btn btn-play" id="playBtn" type="button" title="Ctrl+Enter"><span>play</span> <kbd data-mod>ctrl</kbd><kbd>↵</kbd></button>
     <button class="btn" id="stopBtn" type="button" title="Ctrl+. (shift: stop now)">stop <kbd data-mod>ctrl</kbd><kbd>.</kbd></button>
@@ -50,9 +51,43 @@
   <aside class="side" id="side">
     <div class="side-tabs" role="tablist" aria-label="Side panel">
       <button type="button" role="tab" data-side-tab="live" aria-selected="true">live</button>
+      <button type="button" role="tab" data-side-tab="kit" aria-selected="false">kit</button>
+      <button type="button" role="tab" data-side-tab="mix" aria-selected="false">mix</button>
       <button type="button" role="tab" data-side-tab="timeline" aria-selected="false">timeline</button>
       <button type="button" role="tab" data-side-tab="reference" aria-selected="false">reference</button>
+      <button type="button" role="tab" data-side-tab="control" aria-selected="false">control</button>
       <a class="side-out" id="referenceOut" href="sheet.html" target="_blank" rel="noopener" hidden>open in its own tab ↗</a>
+    </div>
+
+    <div class="side-pane" data-side-pane="kit" role="tabpanel" hidden>
+      <section class="panel">
+        <h2>drum kit</h2>
+        <p class="dim tl-help">Click or drag along a row. Every step writes the code, and M mutes a part.</p>
+        <div id="kit"></div>
+      </section>
+    </div>
+
+    <div class="side-pane" data-side-pane="mix" role="tabpanel" hidden>
+      <section class="panel">
+        <h2>mixer</h2>
+        <p class="dim tl-help">Move a slider and the code changes with it. Slide back to off to remove the effect.</p>
+        <div id="mix"></div>
+      </section>
+    </div>
+
+    <div class="side-pane" data-side-pane="control" role="tabpanel" hidden id="control">
+      <section class="panel">
+        <h2>control center</h2>
+        <p class="control-helper" id="controlHelper"></p>
+        <label class="setting">song <select id="controlSong"></select></label>
+        <label class="setting">look <select id="controlLook"></select></label>
+        <p class="message control-message" id="controlMessage" role="status"></p>
+        <ul class="control-panes" id="controlPanes"></ul>
+      </section>
+      <section class="panel">
+        <h2>learn</h2>
+        <p class="control-links"><a href="start.html" target="_blank" rel="noopener">How to use cannoli</a><a href="sheet.html" target="_blank" rel="noopener">The full reference</a></p>
+      </section>
     </div>
 
     <div class="side-pane" data-side-pane="timeline" role="tabpanel" hidden>
@@ -105,6 +140,7 @@
         <li><kbd data-mod>ctrl</kbd>+<kbd>space</kbd> suggestions · <kbd>tab</kbd> insert · <kbd>shift</kbd>+<kbd>tab</kbd> the whole line</li>
         <li>drum threads and <code>every</code>: click the grid that appears to write the code</li>
         <li>put the cursor on <code>gain</code>, <code>pan</code>, <code>fast</code> and other numbers for a slider</li>
+        <li>the <button type="button" class="link-btn" data-side-tab="kit">kit</button> and <button type="button" class="link-btn" data-side-tab="mix">mix</button> tabs: drums, mute and effects, all written as code</li>
         <li>hover an underline to see what's wrong</li>
       </ul>
       <p class="dim">Everything else is in the <button type="button" class="link-btn" data-side-tab="reference">reference</button> tab.</p>
