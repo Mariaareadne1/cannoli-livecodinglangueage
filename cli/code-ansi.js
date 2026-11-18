@@ -30,11 +30,11 @@ const ROLES = {
 /**
  * @param {{ line: string, offset: number, theme: import("../src/themes.js").Theme, symbols?: object,
  *           problems?: { start: number, end: number, severity: string }[], active?: Set<number>,
- *           colStart?: number, width: number, background?: string }} opts
+ *           colStart?: number, width: number, background?: string, classify?: Function }} opts
  */
-export function codeLine({ line, offset, theme, symbols = {}, problems = [], active = new Set(), colStart = 0, width, background }) {
+export function codeLine({ line, offset, theme, symbols = {}, problems = [], active = new Set(), colStart = 0, width, background, classify = classifyLine }) {
   const base = background ?? theme.bg;
-  const { tokens, commentAt } = classifyLine(line, offset, symbols);
+  const { tokens, commentAt } = classify(line, offset, symbols);
   const chars = [...line];
   // one style per character
   const styles = chars.map((_, i) => ({ color: theme.ink, extra: "", back: base }));

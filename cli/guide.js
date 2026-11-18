@@ -8,6 +8,7 @@
 import { runPane, fg, bg, RESET, BOLD, fit } from "./ansi.js";
 import { connect } from "./link.js";
 import { assistant, reference, wrap } from "./guide-text.js";
+import { strudelAssistant, strudelReference } from "./strudel/guide-text.js";
 import { paneTheme } from "../src/themes.js";
 import { loadPrefs } from "./prefs.js";
 
@@ -15,7 +16,7 @@ export function guide(flags = {}) {
   const pane = flags.reference ? "reference" : "guide";
   const state = { msg: null, connected: false, mode: flags.reference ? "reference" : "assistant", scroll: 0 };
   connect((m) => { state.msg = m; }, (c) => { state.connected = c; });
-  const ref = reference();
+  const references = { cannoli: reference(), strudel: strudelReference() };
 
   runPane({
     fps: 10,
@@ -27,8 +28,9 @@ export function guide(flags = {}) {
       const body = height - 2;
 
       let lines;
-      if (state.mode === "reference") lines = ref;
-      else if (state.msg) lines = assistant(state.msg);
+      const isCannoli = state.msg?.language === "cannoli";
+      if (state.mode === "reference") lines = references[isCannoli ? "cannoli" : "strudel"];
+      else if (state.msg) lines = isCannoli ? assistant(state.msg) : strudelAssistant(state.msg);
       else lines = [{ text: state.connected ? "" : "waiting for the editor…  (run: cannoli edit)", role: "dim" }];
 
       const wrapped = wrap(lines, width - 3);

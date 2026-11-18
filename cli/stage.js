@@ -21,7 +21,7 @@ const CLI = fileURLToPath(new URL("./cannoli.js", import.meta.url));
 const EDITOR_SHARE = 0.56;          // editor width with up to three panes beside it
 const EDITOR_SHARE_GRID = 0.42;     // …and with four, in a 2 × 2 grid
 
-export async function stage(file = "song.cannoli", flags = {}) {
+export async function stage(file = "song.strudel", flags = {}) {
   const extra = flags.theme ? ` --theme=${flags.theme}` : "";
   const cmd = (pane) => `${shellQuote(process.execPath)} ${shellQuote(CLI)} ${pane}${extra}`;
   const panes = flags.all

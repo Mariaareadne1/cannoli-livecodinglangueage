@@ -1,0 +1,11 @@
+// First Steps: real Strudel, with cannoli's extras
+// ctrl+s plays · change anything · ctrl+s again
+
+setcpm(124/4)
+
+kick: s("bd*4")
+clap: s("~ cp ~ cp").room(.3)
+hats: s("hh*8").gain("[.5 .3]*4")
+
+bass: n("<0 0 3 5>*2").scale("A:minor").s("sawtooth").lpf(700).octave(2).pump(.6)
+lead: n("0 [2 4] <7 5> 4").scale("A:minor").s("triangle").every(4, rev).bloom(.5)

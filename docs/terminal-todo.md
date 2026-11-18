@@ -1,5 +1,9 @@
 # Terminal editor: still to do
 
+The terminal now runs real Strudel for `.strudel` files. The click-to-edit tools below were built for the web
+editor's cannoli language, so in the terminal each also needs to read and write Strudel code (`s("bd*4")`,
+`.scale("D:minor")`, `.every(4, rev)`) as well as cannoli code.
+
 Web features the terminal editor (`cli/edit.js`) doesn't have yet. The web version is the reference.
 
 Already working in the terminal, because they're in the shared code: the Strudel names, `slider(...)` in the language, and the ideas card when you name a thread.

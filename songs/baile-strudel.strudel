@@ -1,0 +1,10 @@
+// Baile: Brazilian funk, in Strudel
+// groove("tamborzao") and bloom come from cannoli
+
+style("funk")
+
+kick: s("bd").groove("tamborzao")
+snare: s("~ sd ~ sd").every(2, ply(2))
+bell: s("cb").groove("batida").gain(.4)
+boom: n("0 ~ ~ 0 ~ ~ 0 ~").scale("C:minor").s("sine").octave(2).shape(.5)
+stab: chord("<Cm Cm Fm Fm>").voicing().struct(groove("tresillo")).s("sawtooth").lpf(1400).gain(.5).bloom(.3)

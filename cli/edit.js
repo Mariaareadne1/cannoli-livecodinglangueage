@@ -16,10 +16,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { compile } from "../src/lang/compile.js";
 import { STYLES } from "../src/core/styles.js";
-import { complete } from "../src/editor/complete.js";
-import { Engine } from "../src/audio/engine.js";
+import { loadLanguage } from "./languages.js";
 import { paneTheme, FAMILIES, FAMILY_NAMES, THEMES } from "../src/themes.js";
 import * as B from "./buffer.js";
 import { runPane, fg, bg, RESET, BOLD, ITALIC, fit } from "./ansi.js";
@@ -33,15 +31,17 @@ const MESSAGE_MS = 4000;
 const UNDO_LIMIT = 200;
 const CARD_ITEMS = 7;
 const CARD_W = 46;
-const PLACEHOLDER = "start typing — e.g.  kick: beat fourfloor > bd      ctrl+s plays";
 // ctrl+g cycles: the two families (each pane its own tone), then single tones for every pane
 const THEME_CYCLE = [...FAMILY_NAMES, ...Object.keys(THEMES).filter((n) => !FAMILIES[n])];
 const KEYS = "ctrl+s play · ctrl+t stop · ctrl+e style · ctrl+f fix · ctrl+g theme · ctrl+z undo · ctrl+q quit";
 const NO_STYLE = "none";
 
-export async function edit(file = "song.cannoli", opts = {}) {
+export async function edit(file = "song.strudel", opts = {}) {
   const filePath = path.resolve(file);
   const initial = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8") : "";
+  process.stdout.write("cannoli~ warming up…\n");
+  const language = await loadLanguage(filePath);
+  const { compile } = language;
   const state = {
     buf: B.fromText(initial),
     undo: [],
@@ -56,7 +56,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
     lastHit: 0,
     hits: [],
   };
-  const engine = await makeEngine();
+  const engine = await language.makeEngine({ silent: Boolean(opts.silent) }).catch(() => null);
   const hub = startHub();
 
   /* ---------- editing ---------- */
@@ -89,7 +89,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
 
   function suggestion() {
     const { settings } = state.result.program;
-    const r = complete(text(), B.offsetOf(state.buf), { ...state.result.symbols, keyMode: settings.keys[0]?.mode, style: settings.style });
+    const r = language.complete(text(), B.offsetOf(state.buf), { ...state.result.symbols, keyMode: settings.keys[0]?.mode, style: settings.style });
     return r.items.length ? { ...r, top: r.items[0] } : null;
   }
 
@@ -117,15 +117,15 @@ export async function edit(file = "song.cannoli", opts = {}) {
     state.runText = text();
     try {
       if (engine.playing) {
-        engine.update(result.program);
-        say("changes land on the next bar");
+        await engine.update(result.program);
+        say(language.updateMessage);
       } else {
         await engine.play(result.program);
         state.lastHit = engine.ctx.currentTime;
         say("playing");
       }
     } catch (err) {
-      say(`couldn't start the sound: ${err.message}`, "bad");
+      say(language.name === "strudel" ? err.message : `couldn't start the sound: ${err.message}`, "bad");
     }
   }
 
@@ -173,17 +173,9 @@ export async function edit(file = "song.cannoli", opts = {}) {
 
   function setStyle(name) {
     const all = text();
-    const existing = all.match(/^style\b.*$/m);
-    let next;
-    if (existing) {
-      const end = existing.index + existing[0].length + (name === NO_STYLE && all[existing.index + existing[0].length] === "\n" ? 1 : 0);
-      next = B.replaceRange(state.buf, existing.index, end, name === NO_STYLE ? "" : `style ${name}`);
-    } else if (name !== NO_STYLE) {
-      const firstCode = all.match(/^(?!\s*#)\S/m)?.index ?? 0;
-      next = B.replaceRange(state.buf, firstCode, firstCode, `style ${name}\n`);
-    } else {
-      return say("no style line to remove");
-    }
+    const edit = language.restyle(all, name);
+    if (!edit) return say("no style line to remove");
+    const next = B.replaceRange(state.buf, edit.start, edit.end, edit.text);
     // keep the cursor where it was, on the same text
     change({ ...next, ...B.positionOf(next.lines, Math.min(B.offsetOf(state.buf) + (next.lines.join("\n").length - all.length), next.lines.join("\n").length)) });
     if (engine?.playing) {
@@ -295,6 +287,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
     if (buf.col >= scroll.col + codeW - 1) scroll.col = buf.col - codeW + 2;
 
     const active = soundingTokens(all);
+    const classify = language.classifier(all);
     const card = cardBox(th, width, scroll);
     const out = [titleBar(th, width), rule(th, width)];
     let offset = lines.slice(0, scroll.row).reduce((n, l) => n + l.length + 1, 0);
@@ -310,10 +303,10 @@ export async function edit(file = "song.cannoli", opts = {}) {
       }
       const lineProblems = probs.filter((p) => p.row === r);
       const gutter = gutterCell(th, r, lineProblems, r === buf.row);
-      const lineOpts = { line: lines[r], offset, theme: th, symbols: state.result.symbols, problems: probs, active };
+      const lineOpts = { line: lines[r], offset, theme: th, symbols: state.result.symbols, problems: probs, active, classify };
       const cardRow = card?.rows[i - card.top];
       const code = all === "" && r === 0
-        ? `${bg(th.bg)}${fg(th.faint)}${ITALIC}${fit(PLACEHOLDER, codeW)}${RESET}`
+        ? `${bg(th.bg)}${fg(th.faint)}${ITALIC}${fit(language.placeholder, codeW)}${RESET}`
         : cardRow
           ? codeLine({ ...lineOpts, colStart: scroll.col, width: card.left })
             + cardRow
@@ -383,7 +376,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
     const right = [
       settings.style ? settings.style : null,
       pos?.key ?? settings.keys[0]?.name,
-      pos ? `chord ${pos.chord}` : null,
+      pos?.chord ? `chord ${pos.chord}` : null,
       bar || null,
       playing ? (engine.stopping ? "◼ stopping" : "▶ playing") : "◼ stopped",
       wait !== null && wait !== undefined ? `next in ${wait.toFixed(1)}s` : null,
@@ -460,6 +453,7 @@ export async function edit(file = "song.cannoli", opts = {}) {
     const settings = state.result.program.settings;
     hub.broadcast({
       theme: state.themeName,
+      language: language.name,
       file: path.basename(filePath),
       text: text(),
       cursor: { row: state.buf.row, col: state.buf.col, offset: B.offsetOf(state.buf) },
@@ -484,18 +478,8 @@ export async function edit(file = "song.cannoli", opts = {}) {
   setInterval(broadcast, BROADCAST_MS);
   const pane = runPane({ fps: 20, render, onKey, onExit: () => hub.close() });
   if (!engine) say("no sound device found — editing still works", "bad");
-  else if (!initial) say("an empty page: type a thread, then ctrl+s");
+  else if (!initial) say(language.emptyMessage);
   else say(`opened ${path.basename(filePath)} — ctrl+s to play`);
-}
-
-async function makeEngine() {
-  try {
-    const { AudioContext } = await import("node-web-audio-api");
-    // changes land on the next bar anyway, so a bigger buffer costs nothing and rides out busy moments
-    return new Engine({ AudioContext, latencyHint: "playback" });
-  } catch {
-    return null;
-  }
 }
 
 

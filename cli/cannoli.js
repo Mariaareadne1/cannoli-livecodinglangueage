@@ -29,7 +29,9 @@ const COMMANDS = {
   cannoli stage [file]   open the editor, guide and visual side by side
                          --all: all five panes (adds reference and threads)
                          --threads / --reference: add just one
-  cannoli edit [file]    the editor; it plays the music (default file: song.cannoli)
+  cannoli edit [file]    the editor; it plays the music (default file: song.strudel)
+                         .strudel files are exactly Strudel, .cannoli files the cannoli language
+                         --silent: run without using the speakers
   cannoli guide          live help for the line you're on, problems and suggestions
   cannoli reference      every verb, groove and style (scroll with ↑ ↓)
   cannoli visual         an ASCII creature that moves with the music

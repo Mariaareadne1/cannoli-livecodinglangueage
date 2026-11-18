@@ -8,7 +8,7 @@ always fit together, and each change you make lands on the next downbeat.
 You can play it in two places:
 
 - **the web app**: an editor in the browser with the reference beside it
-- **the terminal**: an editor plus guide, visual, reference and beat-grid panes, set up for performing
+- **the terminal**: an editor plus guide, visual, reference and beat-grid panes, set up for performing. It runs **real [Strudel](https://strudel.cc)**: `.strudel` files are exactly the Strudel language, with cannoli's extras added
 
 ![The web app: the editor, with the live panel showing what each thread plays](docs/screenshots/web-editor.png)
 
@@ -123,6 +123,48 @@ The cheat sheet also works on its own page: `sheet.html`.
 For performing: the editor fills one window and the other panes sit beside it.
 
 ![The stage: editor, guide, visual, reference and threads](docs/screenshots/terminal-stage.png)
+
+### Two languages, one terminal
+
+The file's extension picks the language:
+
+| File | Language |
+|---|---|
+| `song.strudel` (and any new file) | **Strudel, exactly.** This is the official Strudel engine, so code from [strudel.cc](https://strudel.cc) works as it is: mini-notation, `$:` patterns, scales, chords, samples, drum machines, effects |
+| `song.cannoli` | the cannoli language described below |
+
+```js
+setcpm(124/4)
+
+kick: s("bd*4")
+hats: s("hh*8").gain("[.5 .3]*4")
+bass: n("<0 0 3 5>*2").scale("A:minor").s("sawtooth").lpf(700).octave(2).pump(.6)
+lead: n("0 [2 4] <7 5> 4").scale("A:minor").s("triangle").every(4, rev).bloom(.5)
+```
+
+Try `songs/first-steps.strudel` and `songs/baile-strudel.strudel`.
+
+**Everything in the terminal works with Strudel:** the suggestion card (every function, described by Strudel's own docs), whole lines when you name a part (`kick:`, `bass:`, `arp:`), mistakes and typos caught as you type with `ctrl+f` fixes, notes lighting up in the code as they play, the guide, the full reference, the beat grid, the shark visual, themes, the style picker and the stage.
+
+**What cannoli adds to Strudel:**
+
+| Word | What it does |
+|---|---|
+| `.bloom(.5)` | a big reverb that blooms around the sound |
+| `.ghost(.5)` | quiet echoes trailing behind each note |
+| `.tape(.5)` | warmth and a slow wobble |
+| `.pump(.6)` | ducks on every beat |
+| `.air(.4)` | a soft layer of noise on each note |
+| `.mirror()` | forwards then backwards, twice as fast |
+| `.groove("tamborzao")`, `groove("tresillo")` | cannoli's named rhythms |
+| `style("funk")` | the tempo of a style (`ctrl+e` writes it) |
+
+**Good to know:**
+- Sounds download the first time they're used and are kept in `~/.cannoli/cache`, so a song that has played once works offline.
+- The output has a limiter so busy songs don't clip. It's the only change to Strudel's sound.
+- Strudel's web-page pictures (`.pianoroll()`, `.scope()` and so on) are accepted and ignored; the visual and threads panes do that job here.
+- Changes in a `.strudel` file apply as soon as you press `ctrl+s`, as they do in Strudel.
+- Not available in the terminal yet: Hydra visuals, MIDI, OSC, and the web app's click-to-edit grids.
 
 ### Install it
 
@@ -398,3 +440,9 @@ choice is remembered in `~/.cannoli.json`.
 npm test        # the test suite
 npm run web     # the web app on http://localhost:5460
 ```
+
+## License
+
+cannoli is free software under the [GNU Affero General Public License v3.0 or later](LICENSE). You can use, change and share it, and if you share it or run a changed version for others, you share your source under the same license.
+
+The terminal runs [Strudel](https://codeberg.org/uzu/strudel) by the Strudel contributors, also AGPL-3.0, through its official packages. Strudel's default sound banks have their own licenses, listed in the [dough-samples](https://github.com/felixroos/dough-samples/blob/main/README.md) repository.
