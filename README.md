@@ -255,7 +255,7 @@ Put the cursor on a part of a line and a panel opens under it. Every change writ
 
 **With the keyboard:** `ctrl+b` moves into the panel, the arrows move, `space` chooses, `+` holds a melody note, and `esc` goes back to the code. A second `esc` closes the panel for that line.
 
-While a panel is open the terminal sends mouse clicks to cannoli, so hold `option` (Terminal, iTerm2) or `shift` (most others) to select text.
+While a panel is open, mouse clicks go to cannoli. Press `esc` to close it, and you can select text as usual.
 
 ![In the terminal, a blank thread offers whole lines to fill in](docs/screenshots/terminal-fill.png)
 
