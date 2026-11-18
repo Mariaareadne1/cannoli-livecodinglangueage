@@ -1,32 +1,35 @@
 # cannoli~
 
-A live-coding language for performing music. You write a few short
-**threads** (voices) and change them with a small set of verbs, loops and
-conditions. Every thread shares one key and one chord progression, so they
-always fit together, and each change you make lands on the next downbeat.
+Live-code music with **real [Strudel](https://strudel.cc)**, with a key, a tempo, named beats and click-to-edit tools added on top. Everything you click writes ordinary code.
 
 You can play it in two places:
 
 - **the web app**: an editor in the browser with the reference beside it
-- **the terminal**: an editor plus guide, visual, reference and beat-grid panes, set up for performing. It runs **real [Strudel](https://strudel.cc)**: `.strudel` files are exactly the Strudel language, with cannoli's extras added
+- **the terminal**: an editor plus guide, visual, reference and beat-grid panes, set up for performing
 
-![The web app: the editor, with the live panel showing what each thread plays](docs/screenshots/web-editor.png)
+![The web app: the editor, with the drum kit beside it](docs/screenshots/web-editor.png)
 
 ```
-key d minor
-tempo 92
-chords i VI III VII            # one chord per bar
+key a minor
+tempo 124
 
-theme = 0 2 4 _ 6 4
+kick: beat("fourfloor").s("bd")
+clap: beat("backbeat").s("cp").room(.3)
+hats: s("hh*8").gain("[.5 .3]*4")
 
-lead: theme
-  > every 4 rev                # every 4th bar, backwards
-  > high > triangle > ghost
-bass: 0 . 0 4 > low > sawtooth > pump
-pad:  chord > slow 2 > pad > bloom
-kick: euclid 4 16 > bd
-hats: euclid 7 16 > hh > gain 0.4
+bass: n("<0 0 3 5>*2").s("sawtooth").lpf(700).octave(2).pump(.6)
+lead: n("0 [2 4] <7 5> 4").s("triangle").every(4, rev).bloom(.5)
 ```
+
+Apart from the additions below, this is Strudel as it comes, run by the official open-source packages.
+
+| cannoli adds | What it does |
+|---|---|
+| `key a minor` | every `n()` in the song follows this key |
+| `tempo 124` | the speed in beats a minute |
+| `beat("fourfloor")` | a named rhythm to play on |
+| `.bloom()` `.ghost()` `.tape()` `.pump()` `.air()` `.mirror()` | signature effects |
+| `style("funk")` | the tempo of a style |
 
 ---
 
@@ -46,7 +49,7 @@ cd cannoli
 npm install
 ```
 
-The web app only needs the files. `npm install` adds the audio engine for the
+The web app only needs the files. Without `npm install`, it loads Strudel from the npm CDN. `npm install` also adds the audio engine for the
 terminal version (Node.js 22 or newer).
 
 ---
@@ -87,34 +90,21 @@ Songs are saved in the visitor's own browser, so nothing needs a server.
 
 1. Pick a starter from the examples menu in the header, or keep the one that's open.
 2. Press **Ctrl+Enter** (⌘+Enter on a Mac) to play.
-3. Edit anything and press **Ctrl+Enter** again. The change lands on the next bar, so it never stumbles.
-4. **Ctrl+.** stops at the end of the bar. **Ctrl+Shift+.** stops right away.
+3. Edit anything and press **Ctrl+Enter** again to hear it.
+4. **Ctrl+.** stops at the end of the cycle. **Ctrl+Shift+.** stops right away.
 
 | | |
 |---|---|
-| **suggestion card** | pops up as you type. **↑ ↓** choose, **Tab** inserts the word, **Shift+Tab** writes out the whole line it shows, **Esc** closes. **Ctrl+Space** opens it anywhere. |
-| **fill in the blank** | type a thread name and a colon (`hats: `), a `def` (`def lift n = `) or a variable (`theme = `) and the card offers whole lines to finish it, matched to the name and the style |
-| **beat and bar grids** | type a drum thread (`kick: `, `drums: `, `hats: `) or `every ` and a small grid opens under the line. Click the beats or bars you want and it writes the code. **Esc** closes it, **Ctrl+B** uses it from the keyboard. Web app only for now: see [docs/terminal-todo.md](docs/terminal-todo.md). |
-| **ideas for a name** | type any name and a colon (`kick:`, `arp:`, `slowlead:`, `synth:`) and the card offers a few whole lines for that kind of part. They use your style's grooves, your melody and your kick, and the rest of the name changes them: `slowlead` is a slow lead. |
-| **sliders** | put the cursor on a number word (`gain`, `pan`, `bright`, `fast`, `ply`, `clip`, `tempo`, the effects …) and a slider opens. While playing, you hear it as you drag, except `tempo`, which lands on the next bar. Then **keep this number**, or **add a slider to the code**, which writes `gain slider(0.5, 0, 1)` and adds it to the live panel. Web app only for now. |
-| **verb menu** | on `every 4 rev`, it sits under the bar grid. On `someCycles`, `someCyclesBy` and conditions like `when bar > 8`, it opens with the cursor on them, with a chance slider where there's a chance. It lists what could happen, each described; click one to switch and hear a bar with it on. Web app only for now. |
-| **groove picker** | every named rhythm with a picture of its steps, your style's first. On a drum line it's the **grooves** button under the beat grid; on `mask (beat tresillo)` or a melodic line it opens with the cursor on `beat`. Click one to switch and hear a bar of that part, or the music while playing. Web app only for now. |
-| **key picker** | with the cursor on the `key` line, it shows the twelve home notes and the modes from brightest to darkest, each with its mood, plus the notes and chords that key gives you. Click to switch; you hear a quick run up the scale, and while playing every part moves to the new key within a moment. Web app only for now. |
-| **euclid ring** | put the cursor on `euclid 3 8` and a circle opens, with sliders for hits, steps and rotation. It draws the rhythm as you drag and writes `euclid` or, when turned, `euclidRot 3 8 2`. A hand sweeps round while playing, you hear one bar when you let go while stopped, and well-known rhythms get their name. **edit each step** opens the beat grid. Web app only for now. |
-| **sound picker** | put the cursor in a sound word (`triangle`, `bd`, `pluck` …), or press **choose a sound** in a grid, for every sound with a description, your style's favourites first. Click one to switch; you hear that part's own first note in it, or the music itself while playing. Web app only for now. |
-| **song timeline** | the **timeline** tab beside **live** has a row per thread and a column per bar. Click or drag along a row to choose when each part plays, and it writes the step for you, like `when bar <= 8 hush` or your own `enter 8`. The last bar carries on, since a song has no end. Lighter bars are on, but the part has nothing to play there, and conditions like `every 4 hush` are left alone. A marker follows the bar playing now. Web app only for now. |
-| **chord picker** | with the cursor on the `chords` line, it shows a block per bar with real names (Dm, Bb, F, C) and the seven chords of your key, with the ones that usually come next outlined. Click a bar, then a chord; **+ bar** and **− bar** change the length; ready-made progressions put your style's first. You hear each chord as you pick it, and while playing the music follows within a moment. Web app only for now. |
-| **melody grid** | with the cursor on the notes of a line (`lead: 0 2 4 7`, `theme = 0 [2 4] 2`), a piano roll opens, with the key's note names on the side. Click notes to add or remove them, click several in a column for a chord, and drag right to hold. You hear each note as you add it, and while playing the music follows within a moment. A line that plays a variable (`lead: theme`) edits the variable. **more steps** splits the grid finer. Web app only for now. |
-| **problems** | mistakes are underlined; hover one to see what's wrong and click its fix. The problems panel has **fix all**. |
-| **style** | the style menu sets the feel (rave, house, funk, chill) by writing the `style` line |
-| **theme** | the theme menu (see [Themes](#themes)) |
-| **reference** | the **reference** button opens the cheat sheet beside the editor. Drag the divider to resize it. The "load into the editor" button on any song puts that song in the editor. |
-
-![Fill in the blank: after "lead: " the card offers whole lines](docs/screenshots/web-fill.png)
-
-![The reference open beside the editor](docs/screenshots/web-reference.png)
-
-The cheat sheet also works on its own page: `sheet.html`.
+| **suggestion card** | pops up as you type, with every Strudel function and its own documentation. **↑ ↓** choose, **Tab** inserts, **Shift+Tab** writes out the whole line, **Esc** closes |
+| **ideas for a name** | type a name and a colon (`kick:`, `arp:`, `bass:`) and the card offers whole lines for that kind of part |
+| **tools under the code** | put the cursor on `s("bd*4")`, `n("0 2 4")`, `.s("sawtooth")`, `.gain(.5)`, `.every(4, rev)`, `chord("<Am F>")`, `beat("tresillo")`, `"bd(3,8)"` or the `key` and `tempo` lines to get the matching grid, picker or slider |
+| **kit** | every drum on one grid, lined up by beats, with mute buttons |
+| **mix** | mute any part and slide its effects |
+| **timeline** | choose which cycles each part plays in |
+| **control** | open terminal windows from the page |
+| **reference** | every word, from Strudel's own documentation |
+| **how to** | a walkthrough of the web app and terminal |
+| **problems** | mistakes are underlined; hover one to see what's wrong and click its fix |
 
 ---
 
@@ -130,8 +120,8 @@ The file's extension picks the language:
 
 | File | Language |
 |---|---|
-| `song.strudel` (and any new file) | **Strudel, exactly.** This is the official Strudel engine, so code from [strudel.cc](https://strudel.cc) works as it is: mini-notation, `$:` patterns, scales, chords, samples, drum machines, effects |
-| `song.cannoli` | the cannoli language described below |
+| `song.strudel` (and any new file) | **Strudel, plus `key`, `tempo` and `beat`.** This is the official Strudel engine, so code from [strudel.cc](https://strudel.cc) works as it is: mini-notation, `$:` patterns, scales, chords, samples, drum machines, effects |
+| `song.cannoli` | the older cannoli language described below. It only runs in the terminal |
 
 ```js
 setcpm(124/4)
@@ -248,7 +238,7 @@ The **mixer** (`ctrl+x`) lists every part, with a mute button and a slider for e
 | Add reverb | `lead: 0 2 > sine > bloom 0.4` | `lead: n("0 2").s("sine").room(0.4)` |
 | Change a step | `kick: 0 0 . . 0 . . .` | `kick: s("bd bd ~ ~ bd ~ ~ ~")` |
 
-The web app has the same tools in its **kit** and **mix** tabs.
+The web app has the same tools in its **kit** and **mix** tabs, and writes the Strudel column.
 
 ### Plain terminal look
 

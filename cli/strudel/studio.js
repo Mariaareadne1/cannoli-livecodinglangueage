@@ -6,6 +6,7 @@
 
 import { BEATS } from "../../src/core/styles.js";
 import { THREAD_DRUMS } from "../../src/editor/pickers.js";
+import { euclidSteps } from "../../src/core/verbs.js";
 import { KIT, tidyAmount } from "../../src/editor/studio.js";
 import { statements, callsIn, splitArgs, stringOf, beatPicker, writeBeat, DRUM_WORDS } from "./pickers.js";
 
@@ -65,6 +66,15 @@ function namedBeat(calls, root, bodyStart) {
   };
 }
 
+/* s("hh(3,8)"): a Euclidean rhythm, when its steps fit the grid. */
+function euclidBeat(str, bodyStart) {
+  const m = str.body.match(/^(\w+)\((\d+),\s*(\d+)(?:,\s*(\d+))?\)$/);
+  if (!m || STEP_COUNT % Number(m[3]) !== 0) return null;
+  const each = STEP_COUNT / Number(m[3]);
+  const steps = euclidSteps(Number(m[2]), Number(m[3]), Number(m[4] ?? 0)).flatMap((on) => [on, ...Array(each - 1).fill(false)]);
+  return { steps, apply: (next) => ({ start: bodyStart + str.start, end: bodyStart + str.end, text: writeBeat(m[1], next) }) };
+}
+
 function readPart(text, statement, index) {
   const bodyStart = statement.start + statement.name.length + 1;
   const body = text.slice(bodyStart, statement.end);
@@ -73,9 +83,9 @@ function readPart(text, statement, index) {
   const named = root?.name === "beat" ? namedBeat(calls, root, bodyStart) : null;
   const str = root && root.name !== "beat" ? stringOf(root) : null;
   const name = statement.name.replace(MUTED_RE, "");
-  const words = str ? str.body.match(/[A-Za-z_]\w*/g) ?? [] : [];
+  const words = str ? str.body.replace(/\([^)]*\)/g, "").match(/[A-Za-z_]\w*/g) ?? [] : [];
   const isDrum = Boolean(THREAD_DRUMS[name.toLowerCase()]) || DRUM_WORDS.has(named?.drum) || (words.length > 0 && words.every((w) => DRUM_WORDS.has(w)));
-  const picker = named ?? (str ? beatPicker(text, { start: bodyStart, code: body }, root, str, name) : null);
+  const picker = named ?? (str ? euclidBeat(str, bodyStart) ?? beatPicker(text, { start: bodyStart, code: body }, root, str, name) : null);
   return {
     id: index,
     name: name.includes("$") || name === "" ? `part ${index + 1}` : name,

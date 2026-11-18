@@ -1,58 +1,39 @@
 /* ============================================================
    cannoli — the timeline tab
-   Draws the song timeline and turns clicks and drags into code.
-   Drag along a row to paint bars on or off; the code changes
-   when you let go, as one step you can undo.
+   Draws when each part plays and turns clicks and drags into
+   code. Drag along a row to paint cycles on or off; the code
+   changes when you let go, as one step you can undo.
    ============================================================ */
 
-import { readTimeline, applyTimeline, timelineLength } from "./editor/timeline.js";
-import { renderBar } from "./core/render.js";
+import { readStrudelTimeline, applyStrudelTimeline } from "../cli/strudel/pickers.js";
 
 const BARS_PER_GROUP = 4;
 const MORE_BARS = 8;
+const SHORTEST = 16;
 
 /**
  * @param {{ root: HTMLElement, moreButton: HTMLElement, getText: () => string, edit: (change: object) => void }} opts
  */
 export function createTimelinePanel({ root, moreButton, getText, edit }) {
-  let result = null;
   let extra = 0;
   let paint = null;
   let drawn = "";
   let nowBar = 0;
   let longest = 0;   // it never shrinks while you work, so bars don't move under the mouse
 
-  /* Which bars actually make a sound, rules and all. */
-  function soundingBars(names, bars) {
-    if (!result || result.errors.length) return null;
-    const heard = new Map(names.map((n) => [n, Array(bars).fill(false)]));
-    for (let bar = 0; bar < bars; bar++) {
-      try {
-        for (const note of renderBar(result.program, bar)) {
-          if (heard.has(note.thread)) heard.get(note.thread)[bar] = true;
-        }
-      } catch {
-        return null;   // a bar that can't be worked out shouldn't take the panel down with it
-      }
-    }
-    return heard;
-  }
-
   function draw() {
     if (paint) return;
     const text = getText();
-    longest = Math.max(longest, timelineLength(text) + extra);
+    longest = Math.max(longest, SHORTEST + extra);
     const bars = longest;
-    const rows = readTimeline(text, bars);
+    const rows = readStrudelTimeline(text, bars);
     if (rows.length === 0) {
-      setHtml('<p class="dim">Write a thread, like <code>kick: beat fourfloor &gt; bd</code>, and it appears here.</p>');
+      setHtml('<p class="dim">Write a part, like <code>kick: s("bd*4")</code>, and it appears here.</p>');
       return;
     }
-    const heard = soundingBars(rows.map((r) => r.name), bars);
     const numbers = Array.from({ length: bars }, (_, i) => `<span class="tl-number${groupStart(i)}" data-bar="${i + 1}">${i % BARS_PER_GROUP === 0 ? i + 1 : ""}</span>`).join("");
     const body = rows.map((row, r) => `<div class="tl-row"><span class="tl-name" title="${esc(row.name)}">${esc(row.name)}</span>${row.on.map((on, i) => {
-      const quiet = on && heard && !heard.get(row.name)[i];
-      return `<button type="button" class="tl-cell${on ? " on" : ""}${quiet ? " quiet" : ""}${groupStart(i)}" data-row="${r}" data-name="${esc(row.name)}" data-bar="${i + 1}" aria-pressed="${on}" aria-label="${esc(row.name)}, bar ${i + 1}: ${on ? "playing" : "silent"}" tabindex="${r === 0 && i === 0 ? 0 : -1}"></button>`;
+      return `<button type="button" class="tl-cell${on ? " on" : ""}${groupStart(i)}" data-row="${r}" data-name="${row.id}" data-bar="${i + 1}" aria-pressed="${on}" aria-label="${esc(row.name)}, bar ${i + 1}: ${on ? "playing" : "silent"}" tabindex="${r === 0 && i === 0 ? 0 : -1}"></button>`;
     }).join("")}</div>`).join("");
     setHtml(`<div class="tl-row tl-head"><span class="tl-name"></span>${numbers}</div>${body}`);
     markNow();
@@ -79,7 +60,7 @@ export function createTimelinePanel({ root, moreButton, getText, edit }) {
 
   function commit(name) {
     const on = rowCells(name).map((c) => c.classList.contains("on"));
-    const change = applyTimeline(getText(), name, on);
+    const change = applyStrudelTimeline(getText(), Number(name), on);
     if (change) edit(change);
   }
 
@@ -137,9 +118,8 @@ export function createTimelinePanel({ root, moreButton, getText, edit }) {
   }
 
   return {
-    /** The song changed: redraw, using this compile for which bars make a sound. */
-    update(compiled) {
-      result = compiled;
+    /** The song changed: redraw. */
+    update() {
       if (!root.closest("[hidden]")) draw();
     },
     draw,

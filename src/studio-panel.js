@@ -4,7 +4,7 @@
    part's mute and effects. Every click and slide edits the code.
    ============================================================ */
 
-import { readStudio } from "./editor/studio.js";
+import { readStrudelStudio as readStudio } from "../cli/strudel/studio.js";
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
@@ -13,7 +13,7 @@ const amountLabel = (effect) => (effect.written || !effect.removable ? effect.va
 
 /**
  * @param {{ kitRoot: HTMLElement, mixRoot: HTMLElement, getText: () => string, getCaret: () => number,
- *           edit: (change: object) => void, slide: (change: object) => void, hear: (part: string) => void }} opts
+ *           edit: (change: object) => void, slide: (change: object) => void, hear: (offset: number) => void }} opts
  */
 export function createStudioPanel({ kitRoot, mixRoot, getText, getCaret, edit, slide, hear }) {
   let selected = null;     // the mixer's part; until one is picked it follows the cursor
@@ -73,7 +73,7 @@ export function createStudioPanel({ kitRoot, mixRoot, getText, getCaret, edit, s
     const change = studio.setSteps(id, rowSteps(id).map((b) => b.classList.contains("on")));
     if (!change) return;
     edit(change);
-    hear(studio.parts[id].name);
+    hear(studio.parts[id].start);
   }
 
   kitRoot.addEventListener("mousedown", (e) => {
@@ -103,8 +103,9 @@ export function createStudioPanel({ kitRoot, mixRoot, getText, getCaret, edit, s
     if (mute) toggleMute(Number(mute.dataset.mute));
     const add = e.target.closest("[data-add]");
     if (add) {
-      edit(readStudio(getText()).addDrum(add.dataset.add));
-      hear(add.dataset.add);
+      const change = readStudio(getText()).addDrum(add.dataset.add);
+      edit(change);
+      hear(change.start + 1);
       drawKit();
     }
   });
@@ -147,7 +148,7 @@ export function createStudioPanel({ kitRoot, mixRoot, getText, getCaret, edit, s
     if (sliding) return;
     const studio = readStudio(getText());
     if (studio.parts.length === 0) {
-      setHtml(mixRoot, '<p class="dim tl-help">Write a part, like <code>kick: beat fourfloor &gt; bd</code>, and it appears here.</p>');
+      setHtml(mixRoot, '<p class="dim tl-help">Write a part, like <code>kick: s("bd*4")</code>, and it appears here.</p>');
       return;
     }
     const index = Math.min(selected ?? studio.partAt(getCaret()) ?? 0, studio.parts.length - 1);
@@ -183,7 +184,7 @@ export function createStudioPanel({ kitRoot, mixRoot, getText, getCaret, edit, s
     if (!e.target.matches("[data-fx]")) return;
     sliding = false;
     const id = Number(e.target.closest("[data-part]").dataset.part);
-    hear(readStudio(getText()).parts[id].name);
+    hear(readStudio(getText()).parts[id].start);
     drawMix();
   });
 

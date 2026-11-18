@@ -1,19 +1,14 @@
 /* ============================================================
-   cannoli — cheat sheet
-   Everything the language can do, generated from the same
-   tables the language uses, so the sheet can't fall behind.
+   cannoli — the reference
+   Every word comes from Strudel's own documentation or from
+   cannoli's list of additions, so the page can't fall behind.
    ============================================================ */
 
-import { VERBS, GENERATORS, VERB_GROUPS } from "./core/verbs.js";
-import { STYLES, BEATS } from "./core/styles.js";
-import { MODES } from "./core/harmony.js";
+import { catalog } from "../cli/strudel/catalog.js";
+import { EXTRA_DOCS } from "../cli/strudel/extras.js";
+import { BEATS, STYLES } from "./core/styles.js";
 import { EXAMPLES } from "./examples.js";
-import { highlight } from "./editor/highlight.js";
-import { lexLine } from "./lang/lexer.js";
-import { verbLine, generatorLine, SECTION_EXAMPLES } from "./sheet-examples.js";
-import { SAME_NAMES, SAME_NAME_DIFFERENT, CANNOLI_ONLY, WRITTEN_DIFFERENTLY } from "./strudel-names.js";
-import { OLD_NAMES } from "./core/verbs.js";
-import { compile } from "./lang/compile.js";
+import { highlightStrudel } from "./web/highlight.js";
 import { codeLink } from "./share.js";
 import { applyTheme, savedTheme } from "./apply-theme.js";
 
@@ -28,271 +23,82 @@ if (embedded) {
   });
 }
 
-const GROUP_TITLES = {
-  order: "order — rearrange the notes",
-  time: "time — faster, slower, denser",
-  pitch: "pitch — move the notes",
-  structure: "structure — combine and reshape",
-  change: "change over time — conditions and chance",
-  mix: "mix — stop and isolate threads",
-  range: "range — where a thread sits",
-  harmony: "harmony — the chord lock",
-  sound: "sound — what plays the notes",
-  color: "color — loudness, tone, place",
-  effect: "signature effects",
-};
-
-const ARG_WORDS = { num: "n", "num?": "[n]", step: "verb", pat: "pattern", cond: "condition", "else?": "[else verb]", word: "name" };
-const COPIED_MS = 1200;
-
-/* ---------- small builders ---------- */
+const GROUPS = [["patterns", "Changing patterns"], ["rhythm", "Rhythm"], ["sound", "Sound and effects"], ["harmony", "Notes and chords"], ["signals", "Moving values"], ["picking", "Choosing between patterns"]];
+const MINI = [
+  ['s("bd sd")', "play these in turn, filling the cycle"],
+  ['s("bd*4")', "repeat four times"],
+  ['s("bd!3 sd")', "write it three times, as separate steps"],
+  ['s("bd [sd sd]")', "squeeze steps into one"],
+  ['s("<bd sd>")', "one each cycle"],
+  ['s("bd ~ sd ~")', "~ is a rest"],
+  ['s("bd, hh*8")', "a comma plays both at once"],
+  ['s("bd(3,8)")', "3 hits spread over 8 steps"],
+  ['s("bd@3 sd")', "make a step three times as long"],
+  ['s("hh*8?")', "? plays each one only sometimes"],
+];
+const OURS = [
+  ["key a minor", "A line of its own. Every n() in the song follows this key, so parts always fit. Change it once and the whole song moves."],
+  ["tempo 120", "A line of its own. The speed in beats a minute."],
+  ...Object.entries(EXTRA_DOCS).map(([name, entry]) => [entry.example, entry.doc.replace(/^cannoli: /, "")]),
+];
 
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-function copyButton(src) {
-  return `<button class="sh-copy" type="button" data-copy="${esc(src)}" title="copy, then paste into the editor">copy</button>`;
-}
-
-function code(src) {
-  const { symbols } = compile(src);
-  return `<div class="sh-codebox"><pre class="ed-hl sh-code">${highlight(src, symbols)}</pre>${copyButton(src)}</div>`;
-}
-
-function examples(id) {
-  return `<h3>examples — copy any of these into the editor</h3>${code(SECTION_EXAMPLES[id])}`;
-}
-
-/* A whole line you can paste, the parts that are yours to change underlined, and what they mean. */
-function fullLine({ line, tweak, hints }) {
-  const changeable = new Set(tweak
-    ? lexLine(line).tokens.filter((t) => t.start >= tweak[0] && t.end <= tweak[1] && !"()".includes(t.text)).map((t) => t.start)
-    : []);
-  const notes = hints.map(([word, hint]) => `<b>${esc(word)}</b> ${esc(hint)}`).join("<br>");
-  return `<div class="sh-line"><code class="ed-hl sh-full">${highlight(line, { active: changeable })}</code>${copyButton(line)}</div>`
-    + (notes ? `<p class="sh-try">${notes}</p>` : "");
-}
-
-function inline(src) {
-  return `<code class="ed-hl sh-inline">${highlight(src, {})}</code>`;
-}
-
-function table(head, rows) {
-  return `<table class="sh-table"><thead><tr>${head.map((h) => `<th>${h}</th>`).join("")}</tr></thead>
-    <tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-}
-
-function section(id, title, body, intro = "") {
-  return `<section class="sh-section" id="${id}"><h2>${title}</h2>${intro ? `<p class="sh-intro">${intro}</p>` : ""}${body}</section>`;
-}
-
-/* ---------- sections ---------- */
-
-function lineAnatomy() {
-  const parts = [
-    ["lead:", "the thread's name and a colon. Each thread is one line of music."],
-    ["theme", "a pattern: here a variable, or numbers like 0 2 4 (steps in the key)"],
-    ["> every 4 rev", "> hands the music to a verb. This one plays it backwards every 4th bar"],
-    ["> high", "puts it in the high range so it doesn't crowd the others"],
-    ["> triangle", "the sound"],
-  ];
-  return `
-    <div class="sh-anatomy">
-      ${code("lead: theme > every 4 rev > high > triangle")}
-      <ol>${parts.map(([p, d]) => `<li>${inline(p)} <span>${esc(d)}</span></li>`).join("")}</ol>
-    </div>
-    <p>Read a line left to right: start with a pattern, then each <code>&gt;</code> changes it a little more.
-    Every bar, cannoli asks each thread "what do you play now?" and the answer goes through all its verbs again,
-    so conditions like <code>every 4</code> and <code>when bar &gt; 8</code> get checked fresh each bar.</p>
-    <p>Because every thread shares the key and the chords, numbers are scale steps, not exact notes:
-    <code>0</code> is the root, <code>7</code> is an octave up. Notes on the beat snap to the current chord, so
-    threads always fit together.</p>
-    ${code("key d minor\ntempo 96\nchords i VI III VII\n\ntheme = 0 2 4 _ 6 4 . 2   # a variable: doesn't play on its own\ndef lift n = up n > fast 2  # your own verb\n\nlead: theme > every 4 rev > high > triangle\nbass: 0 . 0 4 > low > sawtooth\n  > every 2 (lift 1)           # lines starting with > continue the thread")}`;
-}
-
-function stopping() {
-  return table(["do this", "what happens"], [
-    [inline("# lead: theme > triangle"), "a # in front comments the line out: it stops at the next bar after you press play"],
-    [inline("lead: theme > hush"), "hush silences the thread but keeps your code"],
-    [inline("bass: 0 4 > solo"), "only soloed threads play, to hear one on its own"],
-    [inline("> when bar <= 8 hush"), "silent until bar 9: how songs build up"],
-    [inline("def enter n = when bar <= n hush"), "make it a function, then write > enter 8 on any thread"],
-    ["<kbd>ctrl</kbd>+<kbd>.</kbd>", "stops everything at the end of the bar (add shift to stop now)"],
-    ["<kbd>ctrl</kbd>+<kbd>↵</kbd>", "plays, or applies your changes on the next bar line"],
-  ]);
-}
-
-function lines() {
-  return table(["write", "means"], [
-    [inline("key d minor"), `the key every thread shares. Modes: ${Object.keys(MODES).join(", ")}`],
-    [inline("tempo 96"), "beats per minute"],
-    [inline("chords i VI III VII"), "a chord progression, one chord per bar, looping"],
-    [inline("key g major at 17"), "change key (or chords) from bar 17"],
-    [inline("style rave"), "a feel: sets tempo, drums, mix and suggestions"],
-    [inline("beats 3"), "beats in a bar (default 4)"],
-    [inline("swing 0.2"), "push off-beat eighths late"],
-    [inline("name: …"), "a thread: plays"],
-    [inline("name = …"), "a variable: a pattern or a number"],
-    [inline("def name n = …"), "a function: a new verb or pattern"],
-  ]);
-}
-
-function patterns() {
-  return table(["write", "means"], [
-    [inline("0 2 4 7"), "scale steps, sharing the bar evenly"],
-    [inline("0 . 4 ."), "a dot is a rest"],
-    [inline("0 _ _ 4"), "_ holds the step before"],
-    [inline("0 [2 4]"), "squeeze steps into one step"],
-    [inline("[0,2,4]"), "notes together: a chord"],
-    [inline("3# 3b"), "a semitone up or down: the only way out of the key"],
-    [inline("0x3"), "the same step three times"],
-    [inline("theme + 2"), "everything 2 steps higher, still in key"],
-    [inline("theme * 2"), "intervals twice as wide"],
-    [inline("run 8 * 3 % 7"), "multiply, then wrap into an octave: a melody from arithmetic"],
-    [inline("(0 1 2 3) + (0 4)"), "two patterns combined note by note: 0 5 2 7"],
-    [inline("theme x 3"), "play theme for 3 bars"],
-    [inline("a then b"), "a for a bar, then b"],
-    [inline("for i 0..3 (theme + i)"), "a loop: four bars, one step higher each time"],
-    [inline("if bar > 8 then a else b"), "choose by bar number. Conditions: == != < > <= >= and or not"],
-    [inline("bar"), "the current bar number: 1, 2, 3 …"],
-  ]);
-}
-
-function verbs() {
-  return VERB_GROUPS.map((group) => {
-    const entries = Object.entries(VERBS).filter(([, v]) => v.group === group);
-    const rows = entries.map(([name, v]) => [
-      `<strong class="sh-name">${esc([name, ...v.args.map((a) => ARG_WORDS[a] ?? a)].join(" "))}</strong>`,
-      esc(v.doc),
-      fullLine(verbLine(name)),
-    ]);
-    return `<h3>${GROUP_TITLES[group] ?? group}</h3>${table(["verb", "what it does", "a whole line · what to change"], rows)}`;
-  }).join("") + `<h3>generators — words that make a pattern</h3>${table(["write", "what it makes", "a whole line · what to change"],
-    Object.entries(GENERATORS).map(([name, g]) => [
-      `<strong class="sh-name">${esc([name, ...g.args.map((a) => ARG_WORDS[a] ?? a)].join(" "))}</strong>`, esc(g.doc), fullLine(generatorLine(name)),
-    ]))}`;
-}
-
-function strudel() {
-  const names = (list) => list.map((n) => inline(n)).join(" ");
-  const nearest = (html) => html || "<span class=\"sh-none\">nothing direct</span>";
-  return `
-    <h3>the same name, doing the same thing</h3>
-    <p class="sh-names">${names(SAME_NAMES)}</p>
-    <h3>the same name, but different: watch these</h3>
-    ${table(["word", "how it differs", "to match strudel"], SAME_NAME_DIFFERENT.map(([word, how, match]) => [`<strong class="sh-name">${word}</strong>`, how, match]))}
-    <h3>only in cannoli</h3>
-    ${table(["word", "what it does", "nearest in strudel"], CANNOLI_ONLY.map(([word, what, near]) => [`<strong class="sh-name">${word}</strong>`, what, nearest(near)]))}
-    <h3>written differently</h3>
-    ${table(["cannoli", "strudel", ""], WRITTEN_DIFFERENTLY)}
-    <h3>older cannoli names</h3>
-    <p>These were renamed to match Strudel. The old spellings still work, so older songs keep playing.</p>
-    ${table(["old", "now"], [...Object.entries(OLD_NAMES), ["hits", "euclid (a rotation of it, so the rhythm can start in a different place)"]].map(([old, now]) => [inline(old), now.includes(" ") ? esc(now) : inline(now)]))}`;
-}
-
-function grids() {
-  return table(["type this", "you get", "it writes"], [
-    [inline("kick: "), "a row of steps split into beats. Also for snare, hats, clap, drums and any thread playing a drum.", inline("kick: 0 . . 0 . . 0 . > bd")],
-    [inline("lead: 0 2 4 > every "), "16 bars in fours: click the ones you want. Also for firstOf, lastOf and when bar % 4 == 1.", inline("lead: 0 2 4 > every 4 rev")],
-    [inline("lead: 0 2 4 > gain 0.5"), "with the cursor on it, a slider from 0 to 1. While playing, you hear it as you drag. Also for pan, bright, fast, slow, ply, clip, tempo, swing, the effects and more.", inline("lead: 0 2 4 > gain slider(0.5, 0, 1)")],
-    [inline("lead: 0 2 > someCycles rev"), "with the cursor on it, a menu of what could happen, each described, plus a chance slider on someCyclesBy. Under every, it sits below the bar grid.", inline("lead: 0 2 > someCycles (fast 2)")],
-    [inline("stab: chord > mask (beat tresillo) > stab"), "with the cursor on beat, every named rhythm with a picture of its steps, your style's first. On a drum line it's the grooves button under the beat grid.", inline("mask (beat skip)")],
-    [inline("key d minor"), "with the cursor on the line, the twelve notes and the modes by mood, with the notes and chords you'd get. Your numbers stay the same: every part moves together.", inline("key f# dorian")],
-    [inline("kick: euclid 3 8 > bd"), "with the cursor on euclid, a circle with sliders for hits, steps and rotation, and a hand that follows the music.", inline("kick: euclidRot 3 8 2 > bd")],
-    [inline("lead: 0 2 > triangle"), "with the cursor in the sound word, every sound with a description, your style's favourites first. Click one to hear it and switch. The grids have a choose a sound button too.", inline("lead: 0 2 > pluck")],
-    ["the <strong>timeline</strong> tab", "a row per thread and a column per bar: click or drag along a row to choose when each part plays. The last bar carries on.", inline("hats: 0 0 > hh > when bar <= 8 hush")],
-    [inline("chords i VI III VII"), "with the cursor on the line, a block per bar with real chord names, the seven chords of your key with the likely next ones outlined, and ready-made progressions.", inline("chords i iv VI V")],
-    [inline("lead: 0 2 4 7"), "with the cursor on the notes, a piano roll with the key's note names. Click to add or remove notes, click several in a column for a chord, drag right to hold. Also for variables, and a line that plays a variable edits it.", inline("lead: 0 [2 4] 7 _")],
-    [inline("arp:"), "a few whole lines for that kind of part, which fit your style, melody and kick. Any name works, and the rest of the name changes them: slowlead is a slow lead.", inline("arp: chord > arp > fast 2 > high > pluck")],
-  ]) + `<p>The code on your line updates with every click, and clicking a line you've already written shows what it plays. It writes the simplest code it can: a named groove when the steps match one, and <code>every</code> or <code>firstOf</code> when the bars are regular. Press <kbd>esc</kbd> to close a grid, or <kbd>ctrl</kbd>+<kbd>b</kbd> to use it from the keyboard.</p>`;
-}
+const code = (text) => `<code class="sh-inline">${highlightStrudel(text)}</code>`;
+const copyable = (text) => `<div class="sh-copy"><pre class="ed-hl sh-code">${highlightStrudel(text)}</pre><button type="button" class="btn" data-copy="${esc(text)}">copy</button></div>`;
+const table = (rows) => `<table class="sh-table"><tbody>${rows.map(([left, right]) => `<tr><td>${code(left)}</td><td>${esc(right)}</td></tr>`).join("")}</tbody></table>`;
+const section = (id, title, intro, body) => `<section class="sh-section" id="${id}"><h2>${title}</h2>${intro ? `<p class="sh-intro">${intro}</p>` : ""}${body}</section>`;
 
 function grooves() {
-  const rows = Object.entries(BEATS).map(([name, b]) => [
-    `<strong class="sh-name">${name}</strong>`,
-    `<span class="sh-steps">${[...b.steps].map((c, i) => `<i class="${c === "x" ? "on" : ""}${i % 4 === 0 ? " beat" : ""}"></i>`).join("")}</span>`,
-    esc(b.doc),
-  ]);
-  return table(["beat …", "16 steps", "feel"], rows) + examples("grooves");
+  const rows = Object.entries(BEATS).map(([name, beat]) => `<tr><td>${code(`beat("${name}")`)}</td><td class="sh-steps">${[...beat.steps].map((c) => (c === "x" ? "█" : "·")).join("")}</td><td>${esc(beat.doc)}</td></tr>`).join("");
+  return `<table class="sh-table"><tbody>${rows}</tbody></table>`;
 }
 
-function styles() {
-  return table(["style", "tempo", "feel", "suggests first"], Object.entries(STYLES).map(([name, s]) => [
-    inline(`style ${name}`), String(s.tempo), esc(s.doc),
-    `${s.sounds.slice(0, 5).map(inline).join(" ")}<br>${s.beats.slice(0, 3).map((b) => inline(`beat ${b}`)).join(" ")}`,
-  ]));
+function words() {
+  const all = [...new Set(catalog().values())].filter((entry) => entry.group !== "cannoli");
+  const groups = GROUPS.map(([group, title]) => {
+    const list = all.filter((entry) => entry.group === group).sort((a, b) => a.name.localeCompare(b.name));
+    return `<h3>${title}</h3>${list.map((entry) => `<article class="sh-word" data-word="${esc(`${entry.name} ${entry.synonyms.join(" ")} ${entry.doc}`.toLowerCase())}">
+      <h4>${esc(entry.name)}${entry.params.length ? `<span>(${esc(entry.params.join(", "))})</span>` : ""}</h4>
+      <p>${esc(entry.doc)}</p>${entry.example ? copyable(entry.example) : ""}</article>`).join("")}`;
+  }).join("");
+  return `<label class="sh-search">find a word <input type="search" id="wordSearch" placeholder="reverb, fast, chord…" /></label><div id="wordList">${groups}</div>`;
 }
 
 function songs() {
-  return EXAMPLES.filter((ex) => ex.explain).map((ex) => `
-    <article class="sh-song">
-      <header>
-        <h3>${esc(ex.name)}</h3>
-        <a class="btn btn-play" href="${codeLink(ex.code)}" target="_blank" rel="noopener" data-song="${EXAMPLES.indexOf(ex)}">${embedded ? "load into the editor" : "open in cannoli ↗"}</a>
-      </header>
-      <p class="sh-intro">${esc(ex.note)}</p>
-      <div class="sh-song-body">
-        ${code(ex.code)}
-        <ul class="sh-explain">${ex.explain.map(([bit, why]) => `<li>${inline(bit)}<span>${esc(why)}</span></li>`).join("")}</ul>
-      </div>
-    </article>`).join("");
+  return `<ul class="sh-songs">${EXAMPLES.map((song, i) => `<li><strong>${esc(song.name)}</strong><span>${esc(song.note)}</span>${embedded
+    ? `<button type="button" class="btn" data-load="${i}">load into the editor</button>`
+    : `<a class="btn" href="${codeLink(song.code)}">open in the editor</a>`}</li>`).join("")}</ul>`;
 }
-
-/* ---------- page ---------- */
 
 document.getElementById("sheet").innerHTML = [
-  section("line", "how a line works", lineAnatomy()),
-  section("stop", "starting and stopping", stopping() + examples("stop"), "Changes, mutes and stops all land on the next bar line, so you can't fall out of time."),
-  section("settings", "lines", lines() + examples("settings")),
-  section("patterns", "patterns, arithmetic, loops and conditions", patterns() + examples("patterns")),
-  section("verbs", "every verb", examples("verbs") + verbs(), "Verbs go after <code>&gt;</code>. Group several in parentheses to pass them as one: <code>every 4 (rev &gt; up 2)</code>. "
-    + "Every example below is a whole line: copy it into the editor as it is. <span class=\"sh-tweak-key\">Underlined</span> parts are yours to change; the note under the line says what they mean."),
-  section("grooves", "grooves", grooves(), "Named 16-step rhythms for <code>beat name</code>. Each lit square is a hit; the brighter edge marks each beat."),
-  section("styles", "styles", styles() + examples("styles"), "One line at the top sets the feel. A tempo line still wins over the style's tempo."),
-  section("strudel", "coming from strudel", strudel(), "cannoli uses Strudel's name wherever a word does the same thing. Everything that differs is listed here."),
-  section("grids", "click to write code", grids(), "Some lines open a small control underneath, so you can pick with the mouse instead of typing."),
-  section("songs", "songs to learn from", songs(), "Each one builds over time. Open it, press ctrl+enter, and watch which lines light up."),
+  section("line", "A line", "A song is a few named parts. Each part is a pattern with changes chained after it. This is real Strudel, so anything from strudel.cc works here.",
+    copyable('key a minor\ntempo 120\n\nkick: beat("fourfloor").s("bd")\nhats: s("hh*8").gain(.4)\nlead: n("0 2 4 7").s("sawtooth").lpf(900).every(4, rev)\n_pad: chord("<Am F>").voicing()   // _ in front mutes a part')),
+  section("patterns", "Patterns", "What goes inside the quotes.", table(MINI)),
+  section("cannoli", "What cannoli adds", "These work here and in the terminal, but not on strudel.cc.", table(OURS)),
+  section("grooves", "Named beats", `Use them with ${code('beat("name").s("bd")')}. Styles set the tempo: ${Object.keys(STYLES).map((s) => code(`style("${s}")`)).join(" ")}.`, grooves()),
+  section("words", "Every word", "From Strudel's own documentation.", words()),
+  section("songs", "Songs to learn from", "", songs()),
 ].join("");
 
-document.getElementById("printBtn").addEventListener("click", () => window.print());
-
-document.getElementById("sheet").addEventListener("click", async (e) => {
-  const button = e.target.closest("[data-copy]");
-  if (!button) return;
-  const copied = await copyText(button.dataset.copy);
-  if (!copied) selectCode(button);   // so ⌘C / ctrl+C still works
-  button.textContent = copied ? "copied" : "press ⌘C";
-  setTimeout(() => { button.textContent = "copy"; }, COPIED_MS);
+document.addEventListener("click", async (e) => {
+  const copy = e.target.closest("[data-copy]");
+  if (copy) {
+    try {
+      await navigator.clipboard.writeText(copy.dataset.copy);
+      copy.textContent = "copied";
+    } catch {
+      copy.textContent = "select it to copy";
+    }
+    setTimeout(() => { copy.textContent = "copy"; }, 1500);
+  }
+  const load = e.target.closest("[data-load]");
+  if (load) {
+    const song = EXAMPLES[Number(load.dataset.load)];
+    window.parent.postMessage({ type: "cannoli:load", code: song.code, name: song.name }, location.origin);
+  }
 });
 
-function selectCode(button) {
-  const target = button.parentElement.querySelector("pre, code");
-  const range = document.createRange();
-  range.selectNodeContents(target);
-  getSelection().removeAllRanges();
-  getSelection().addRange(range);
-}
-
-async function copyText(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    // older browsers, or a frame without clipboard access
-    const area = Object.assign(document.createElement("textarea"), { value: text });
-    document.body.append(area);
-    area.select();
-    const ok = document.execCommand("copy");
-    area.remove();
-    return ok;
-  }
-}
-
-if (embedded) {
-  document.getElementById("sheet").addEventListener("click", (e) => {
-    const link = e.target.closest("[data-song]");
-    if (!link) return;
-    e.preventDefault();
-    const ex = EXAMPLES[Number(link.dataset.song)];
-    window.parent.postMessage({ type: "cannoli:load", code: ex.code, name: ex.name }, location.origin);
-  });
-}
+document.getElementById("wordSearch").addEventListener("input", (e) => {
+  const query = e.target.value.trim().toLowerCase();
+  document.querySelectorAll(".sh-word").forEach((word) => { word.hidden = Boolean(query) && !word.dataset.word.includes(query); });
+});

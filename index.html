@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>cannoli</title>
-  <meta name="description" content="cannoli — a live-coding language where every thread shares one key and every change lands on the downbeat." />
+  <meta name="description" content="cannoli: live-code music with real Strudel, plus keys, named beats, grids and effects." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
@@ -16,7 +16,6 @@
   <h1 class="mark">cannoli<span class="mark-tilde">~</span></h1>
   <div class="status" aria-live="polite">
     <span class="st"><span class="st-k">key</span> <span id="stKey">—</span></span>
-    <span class="st"><span class="st-k">chord</span> <span id="stChord">—</span></span>
     <span class="st"><span class="st-k">bar</span> <span id="stBar">—</span></span>
     <span class="st st-next" id="stNext"></span>
   </div>
@@ -93,10 +92,9 @@
     <div class="side-pane" data-side-pane="timeline" role="tabpanel" hidden>
       <section class="panel">
         <h2>song timeline</h2>
-        <p class="dim tl-help">Click or drag along a row to choose when each part plays. The last bar carries on.</p>
+        <p class="dim tl-help">Click or drag along a row to choose which cycles each part plays in. It loops.</p>
         <div class="tl" id="timeline"></div>
         <button type="button" class="btn tl-more" id="timelineMore">+ 8 bars</button>
-        <p class="dim tl-help">Lighter bars are on, but that part has nothing to play there.</p>
       </section>
     </div>
 
@@ -121,25 +119,14 @@
       <ul class="problem-list" id="problemList"></ul>
     </section>
 
-    <section class="panel">
-      <h2>settings</h2>
-      <label class="setting">changes land on
-        <select id="quantize">
-          <option value="bar">the next bar</option>
-          <option value="phrase">the next 4-bar phrase</option>
-        </select>
-      </label>
-      <label class="setting setting-check"><input type="checkbox" id="autofix" /> fix typos automatically when I press play</label>
-    </section>
-
     <section class="panel panel-help">
       <h2>keys</h2>
       <ul class="keys">
-        <li><kbd data-mod>ctrl</kbd>+<kbd>↵</kbd> play, or apply changes on the next bar</li>
+        <li><kbd data-mod>ctrl</kbd>+<kbd>↵</kbd> play, or apply your changes</li>
         <li><kbd data-mod>ctrl</kbd>+<kbd>.</kbd> stop at the end of the bar <span class="dim">(+shift: now)</span></li>
         <li><kbd data-mod>ctrl</kbd>+<kbd>space</kbd> suggestions · <kbd>tab</kbd> insert · <kbd>shift</kbd>+<kbd>tab</kbd> the whole line</li>
-        <li>drum threads and <code>every</code>: click the grid that appears to write the code</li>
-        <li>put the cursor on <code>gain</code>, <code>pan</code>, <code>fast</code> and other numbers for a slider</li>
+        <li>put the cursor on a pattern, sound or <code>every</code>: click what appears to write the code</li>
+        <li>put the cursor on <code>gain</code>, <code>lpf</code>, <code>room</code> and other numbers for a slider</li>
         <li>the <button type="button" class="link-btn" data-side-tab="kit">kit</button> and <button type="button" class="link-btn" data-side-tab="mix">mix</button> tabs: drums, mute and effects, all written as code</li>
         <li>hover an underline to see what's wrong</li>
       </ul>

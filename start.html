@@ -17,16 +17,35 @@
 <main class="page">
   <p class="back"><a href="index.html">← back to the editor</a></p>
   <h1>How to use cannoli<span>~</span></h1>
-  <p class="lead">cannoli is a way to make music by writing code. You can use it in this web page, or in your terminal with real Strudel.</p>
+  <p class="lead">cannoli is a way to make music by writing code. It runs real Strudel, in this web page and in your terminal, with a few additions of its own.</p>
 
   <h2>Your first sound</h2>
   <ol>
     <li>Open the <a href="index.html">editor</a> and type this line:
-      <pre>kick: beat fourfloor &gt; bd</pre></li>
+      <pre>kick: s("bd*4")</pre></li>
     <li>Press <kbd>ctrl</kbd> <kbd>enter</kbd> to play. On a Mac you can use <kbd>cmd</kbd> <kbd>enter</kbd>.</li>
-    <li>Change the code and press it again. The change lands on the next bar.</li>
+    <li>Change the code and press it again. You hear the change right away.</li>
     <li>Press <kbd>ctrl</kbd> <kbd>.</kbd> to stop.</li>
   </ol>
+
+  <h2>A whole song</h2>
+  <pre>key a minor
+tempo 124
+
+kick: beat("fourfloor").s("bd")
+hats: s("hh*8").gain(.4)
+bass: n("0 ~ 3 5").s("sawtooth").octave(2).lpf(700)
+lead: n("0 2 4 7").s("triangle").every(4, rev).bloom(.5)</pre>
+  <table>
+    <tbody>
+      <tr><th><code>key a minor</code></th><td>Every <code>n()</code> follows this key, so the parts fit together.</td></tr>
+      <tr><th><code>tempo 124</code></th><td>The speed, in beats a minute.</td></tr>
+      <tr><th><code>kick:</code></th><td>A name for the part. Call it anything.</td></tr>
+      <tr><th><code>beat("fourfloor")</code></th><td>A named rhythm. The reference lists them all.</td></tr>
+      <tr><th><code>.s("bd")</code></th><td>The sound to play.</td></tr>
+      <tr><th><code>.gain(.4)</code></th><td>Each change is chained on with a dot.</td></tr>
+    </tbody>
+  </table>
 
   <h2>Tools in the web editor</h2>
   <p>Everything you click writes code, so you can always read what changed.</p>
@@ -34,10 +53,10 @@
     <tbody>
       <tr><th>kit</th><td>All your drums on one grid, lined up by beats. Click steps, press <b>M</b> to mute, or add a drum.</td></tr>
       <tr><th>mix</th><td>Mute any part and slide its effects. Slide an effect back to off to remove it from the code.</td></tr>
-      <tr><th>timeline</th><td>Choose which bars each part plays in.</td></tr>
-      <tr><th>reference</th><td>Every word in the language, with lines to copy.</td></tr>
+      <tr><th>timeline</th><td>Choose which cycles each part plays in.</td></tr>
+      <tr><th>reference</th><td>Every word you can write, with lines to copy.</td></tr>
       <tr><th>control</th><td>Open terminal windows from this page.</td></tr>
-      <tr><th>under a line</th><td>Put the cursor on a drum line, melody, chord, sound or number to get a grid or slider right there.</td></tr>
+      <tr><th>under a line</th><td>Put the cursor on a pattern, sound, chord, key or number to get a grid or slider right there.</td></tr>
     </tbody>
   </table>
 
@@ -74,13 +93,9 @@ npm run web</pre>
     </tbody>
   </table>
 
-  <h2>How muting is written</h2>
-  <table>
-    <tbody>
-      <tr><th>cannoli</th><td><code>kick: beat fourfloor &gt; bd &gt; hush</code></td></tr>
-      <tr><th>Strudel</th><td><code>_kick: s("bd*4")</code></td></tr>
-    </tbody>
-  </table>
+  <h2>Muting a part</h2>
+  <p>Put an underscore in front of its name, or press <b>M</b> in the kit or mix tab:</p>
+  <pre>_kick: s("bd*4")</pre>
 </main>
 </body>
 </html>

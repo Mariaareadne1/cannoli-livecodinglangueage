@@ -36,109 +36,37 @@ a.btn { text-decoration: none; }
 .sh-section p { max-width: 75ch; }
 
 .ed-hl.sh-code {
-  margin: 12px 0;
-  padding: 12px 16px;
+  position: static;
+  margin: 0;
+  padding: 10px 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-2);
+  color: var(--ink);
   font-size: 13px;
   line-height: 1.6;
   overflow-x: auto;
   white-space: pre;
 }
-.ed-hl.sh-inline { padding: 1px 6px; border-radius: 4px; background: var(--bg-3); font-size: 12.5px; white-space: nowrap; }
-.sh-name { color: var(--soft); font-weight: 600; white-space: nowrap; }
+.sh-copy { position: relative; margin: 8px 0; }
+.sh-copy .btn { position: absolute; top: 6px; right: 6px; padding: 2px 8px; font-size: 11px; }
+.sh-inline { color: var(--ink); white-space: nowrap; }
+.sh-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sh-table td { padding: 7px 14px 7px 0; border-top: 1px solid var(--line); color: var(--ink-dim); vertical-align: top; }
+.sh-table td:first-child { white-space: nowrap; }
+.sh-steps { color: var(--soft) !important; letter-spacing: 1px; white-space: nowrap; }
+.sh-search { display: flex; align-items: center; gap: 10px; margin: 10px 0 4px; color: var(--ink-dim); }
+.sh-search input { flex: 1; max-width: 340px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2); color: var(--ink); font: inherit; }
+.sh-word { padding: 12px 0; border-top: 1px solid var(--line); }
+.sh-word[hidden] { display: none; }
+.sh-word h4 { margin: 0 0 3px; color: var(--ink); font-size: 14px; }
+.sh-word h4 span { color: var(--ink-faint); font-weight: 400; }
+.sh-word p { margin: 0 0 6px; color: var(--ink-dim); font-size: 13px; }
+.sh-songs { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.sh-songs li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.sh-songs span { flex: 1; min-width: 180px; color: var(--ink-dim); font-size: 13px; }
 
-.sh-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-.sh-table th {
-  text-align: left;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  padding: 6px 10px 6px 0;
-  border-bottom: 1px solid var(--line);
-}
-.sh-table td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-.sh-table td:first-child { width: 1%; white-space: nowrap; }
-
-.sh-anatomy ol { margin: 0; padding-left: 22px; }
-.sh-anatomy li { margin-bottom: 6px; }
-.sh-anatomy li > span, .sh-explain li > span { color: var(--ink-dim); margin-left: 8px; }
-
-.sh-steps { display: inline-flex; gap: 2px; }
-.sh-steps i { width: 10px; height: 14px; border-radius: 2px; background: var(--bg-3); }
-.sh-steps i.beat { box-shadow: inset 2px 0 0 var(--ink-faint); }
-.sh-steps i.on { background: var(--accent); }
-
-.sh-song { margin: 22px 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-2); }
-.sh-song header { display: flex; align-items: center; gap: 12px; }
-.sh-song h3 { margin: 0; color: var(--ink); font-size: 16px; }
-.sh-song header .btn { margin-left: auto; }
-.sh-song-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-.sh-song .sh-code { background: var(--bg); }
-.sh-explain { list-style: none; margin: 12px 0; padding: 0; }
-.sh-explain li { margin-bottom: 10px; }
-.sh-explain li > span { display: block; margin: 3px 0 0; }
-
-@media (max-width: 820px) {
-  .sh-song-body { grid-template-columns: 1fr; }
-  .sh-actions { margin-left: 0; }
-  .sh-table td:first-child { white-space: normal; }
-}
-
-@media print {
-  :root {
-    --bg: #fff; --bg-2: #fff; --bg-3: #f2f0ea; --line: #ddd; --ink: #1a1a22; --ink-dim: #4a4a55; --ink-faint: #777;
-    --t0: #c2410c; --t1: #0f766e; --t2: #a16207; --t3: #6d28d9; --t4: #be185d; --t5: #1d4ed8; --accent: #c2410c;
-  }
-  body.sheet { background: #fff; }
-  .sh-top { position: static; background: #fff; }
-  .sh-nav, .sh-actions, .sh-song .btn { display: none; }
-  .sh-section, .sh-song { break-inside: avoid-page; }
-  .sh-table tr, .sh-code { break-inside: avoid; }
-}
-
-/* inside the app's side panel */
-body.embedded .sh-top { padding: 8px 14px; gap: 8px 12px; }
-body.embedded .sh-top .mark { font-size: 15px; }
-body.embedded .sh-sub, body.embedded .sh-actions { display: none; }
-body.embedded .sh-nav { font-size: 12px; gap: 2px 10px; }
-body.embedded .sh-main { padding: 0 14px 40px; }
-body.embedded .sh-section { padding-top: 18px; scroll-margin-top: 90px; }
-body.embedded .sh-section h2 { font-size: 17px; }
-body.embedded .sh-song-body { grid-template-columns: 1fr; }
-body.embedded .sh-table td:first-child { white-space: normal; }
-
-/* copyable code: blocks and whole lines */
-.sh-codebox { position: relative; }
-.sh-copy {
-  font: inherit;
-  font-size: 11px;
-  padding: 2px 8px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--bg-3);
-  color: var(--ink-dim);
-  cursor: pointer;
-}
-.sh-copy:hover, .sh-copy:focus-visible { color: var(--ink); border-color: var(--accent); }
-.sh-codebox .sh-copy { position: absolute; top: 8px; right: 8px; }
-.sh-line { display: flex; align-items: center; gap: 8px; }
-.ed-hl.sh-full { padding: 2px 8px; border-radius: 4px; background: var(--bg-3); font-size: 12.5px; white-space: pre; overflow-x: auto; }
-/* the parts you can change: underlined, not lit up like a playing note */
-.sh-full .on, .sh-tweak-key {
-  color: inherit;
-  background: none;
-  box-shadow: none;
-  text-decoration: underline dotted var(--accent);
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
-}
-.sh-try { margin: 4px 0 0; font-size: 11.5px; color: var(--ink-faint); line-height: 1.5; }
-.sh-try b { color: var(--soft); font-weight: 600; }
-@media print { .sh-copy { display: none; } }
-
-.sh-names { display: flex; flex-wrap: wrap; gap: 6px; max-width: none; }
-.sh-none { color: var(--ink-faint); }
+body.embedded .sh-top { display: none; }
+body.embedded .sh-main { padding: 0 16px 40px; }
+@media (max-width: 640px) { .sh-table td:first-child { white-space: normal; } .sh-inline { white-space: normal; } }
+@media print { .sh-top, .sh-copy .btn { display: none; } }

@@ -1,184 +1,79 @@
-/* cannoli — example pieces. The first one is what a new visitor sees. */
+/* cannoli — songs to start from. The first one is what a new visitor sees. All of it is Strudel, plus key, tempo and beat. */
 
 export const EXAMPLES = [
   {
-    name: "rave · 4am warehouse",
-    note: "a rave track that builds: drums first, then hats, then the supersaw lead",
-    code: `# 4am Warehouse — rave
-style rave
-key f minor
-chords i VI III VII
-
-riff = 0 2 4 7
-def enter n = when bar <= n hush
-
-kick: beat fourfloor > bd
-acid: run 8 * 3 % 7 > acid > low > drift 0.2
-  > when bar > 16 (fast 2)
-hats: beat offbeat > oh > gain 0.5 > enter 4
-clap: beat backbeat > cp > enter 4
-lead: riff > fast 2 > every 4 (rev > up 2)
-  > high > supersaw > ghost 0.3 > enter 8
-roll: beat rolling > hh > gain 0.3 > every 8 (fast 2) > enter 8`,
-    explain: [
-      ["def enter n = when bar <= n hush", "a function you made: the thread stays silent until bar n, so the song builds"],
-      ["acid: run 8 * 3 % 7", "the acid line is arithmetic: count 0–7, multiply by 3, wrap at 7 → 0 3 6 2 5 1 4 0"],
-      ["> drift 0.2", "a few notes wander each bar, so the acid line never repeats exactly"],
-      ["> when bar > 16 (fast 2)", "after bar 16 the acid doubles in speed: the drop"],
-      ["> every 4 (rev > up 2)", "every 4th bar the riff plays backwards, two steps higher"],
-      ["> enter 8", "the lead comes in at bar 9"],
-    ],
-  },
-  {
-    name: "funk · baile no morro",
-    note: "Brazilian funk: tamborzão drums, a booming 808, stabs on the tresillo",
-    code: `# Baile no Morro — Brazilian funk
-style funk
-key c minor
-chords i i iv iv
-
-def enter n = when bar <= n hush
-
-kick: beat tamborzao > bd
-boom: 0 . . 0 . . 0 . . . 3 . . 0 . . > boom
-  > every 4 (up 2)
-bell: beat batida > cb > gain 0.4 > enter 2
-snare: beat backbeat > sd > every 2 (ply 2) > enter 2
-stab: chord > mask (beat tresillo) > stab > high > gain 0.5 > enter 4
-vox: 4 . 4 2 . 0 . . > square > high > short > enter 8
-  > someCyclesBy 0.5 rev`,
-    explain: [
-      ["kick: beat tamborzao", "the tamborzão: baile funk's signature 3-3-4-3-3 kick pattern"],
-      ["boom: 0 . . 0 …", "a pitched 808: the dots are rests, the numbers are notes in C minor"],
-      ["> every 4 (up 2)", "every 4th bar the 808 line jumps up a third"],
-      ["> every 2 (ply 2)", "every other bar each snare becomes a quick double hit"],
-      ["chord > mask (beat tresillo)", "the chord is cut into stabs on the 3-3-2 tresillo rhythm"],
-      ["> someCyclesBy 0.5 rev", "the vocal-chop line flips backwards in about half the bars"],
-    ],
-  },
-  {
-    name: "house · sunday morning club",
-    note: "chord stabs on a skipping rhythm, an offbeat sub bass, a plucked hook",
-    code: `# Sunday Morning Club — house
-style house
+    name: "first steps",
+    note: "a kick, a clap, hats, a bass and a melody",
+    code: `// press ctrl+enter to play · change anything · press it again
 key a minor
-chords ii V I vi
+tempo 124
 
-hook = 4 _ 2 . 0 _ . .
-def enter n = when bar <= n hush
+kick: beat("fourfloor").s("bd")
+clap: beat("backbeat").s("cp").room(.3)
+hats: s("hh*8").gain("[.5 .3]*4")
 
-kick: beat fourfloor > bd
-hats: beat shuffle > hh > gain 0.4 > enter 2
-bass: beat offbeat > sub > enter 2
-stabs: chord > mask (beat skip) > stab > bloom 0.3 > enter 4
-lead: hook > every 2 (up 2) > high > pluck > ghost > enter 8
-  > when bar % 16 == 0 (fast 2)
-shaker: euclid 16 16 > sh > gain 0.25 > enter 8`,
-    explain: [
-      ["chords ii V I vi", "a deep-house progression; every thread follows it automatically"],
-      ["bass: beat offbeat > sub", "the bass bounces between the kicks: the classic house push"],
-      ["chord > mask (beat skip)", "the chords become syncopated stabs"],
-      ["hook = 4 _ 2 . 0 _ . .", "a variable: _ holds the note before, . is a rest"],
-      ["> when bar % 16 == 0 (fast 2)", "every 16th bar the hook doubles up, a fill before the next section"],
-      ["euclid 16 16", "16 hits in 16 steps: a shaker on every sixteenth"],
-    ],
+bass: n("<0 0 3 5>*2").s("sawtooth").lpf(700).octave(2).pump(.6)
+lead: n("0 [2 4] <7 5> 4").s("triangle").every(4, rev).bloom(.5)`,
   },
   {
-    name: "chill · rain on the window",
-    note: "slow and warm: tape pads, a bell melody that turns with the bar number",
-    code: `# Rain on the Window — chill
-style chill
-key e dorian
-chords ii V I IV
+    name: "rave · 4am warehouse",
+    note: "a driving kick, an acid line and a wide lead",
+    code: `// 4am warehouse
+key f minor
+tempo 140
 
-theme = 0 2 4 6 4 2
+kick: beat("fourfloor").s("bd").gain(1.1)
+hats: beat("offbeat").s("oh").gain(.5)
+clap: beat("backbeat").s("cp").room(.2)
+roll: beat("rolling").s("hh").gain(.3).every(8, fast(2))
 
-keys: chord > slow 2 > pad > bloom > tape 0.4
-melody: theme > rot bar % 3 > slow 2 > high > bell > ghost 0.5
-  > someCyclesBy 0.4 rev
-bass: 0 _ . 4 > sub
-kick: beat boombap > bd
-snare: beat backbeat > sd > gain 0.6
-hats: euclid 6 8 > hh > gain 0.3 > someCycles (ply 2)`,
-    explain: [
-      ["style chill", "80 bpm, swung, soft drums and a warm lo-fi mix"],
-      ["chord > slow 2 > pad", "each chord is held for two bars"],
-      ["> bloom > tape 0.4", "a reverb that rings in key, plus warmth and wobble"],
-      ["rot bar % 3", "the melody's starting note shifts with the bar number: 1, 2, 0, 1, 2 …"],
-      ["> ghost 0.5", "echoes that climb up through the current chord"],
-      ["> someCycles (ply 2)", "in about half the bars the hats double up"],
-    ],
+acid: n("0 3 6 2 5 1 4 0").s("sawtooth").octave(2)
+  .lpf(sine.range(400, 2400).slow(8)).lpq(12).shape(.3)
+lead: n("<0 2 4 7>*2").s("supersaw").octave(4).gain(.45)
+  .every(4, x => x.rev().add(n(2))).ghost(.3).mask("<0!8 1!8>")`,
   },
   {
-    name: "first light",
-    note: "a variable, a function, every, when, and all five threads",
-    code: `# cannoli — Ctrl+Enter to play, Ctrl+. to stop
+    name: "house · sunday",
+    note: "warm chords over a steady four on the floor",
+    code: `// sunday
+key c dorian
+tempo 122
+
+kick: beat("fourfloor").s("bd")
+clap: beat("backbeat").s("cp").room(.4)
+hats: beat("offbeat").s("hh").gain(.5)
+shaker: s("sh*16").gain("[.3 .15]*8")
+
+keys: chord("<Cm7 F7 Bb^7 Gm7>").voicing().s("piano").struct("~ x ~ x ~ ~ x ~").room(.5)
+bass: n("<0 3 6 4>*2").s("triangle").octave(2).lpf(500).pump(.5)`,
+  },
+  {
+    name: "funk · baile",
+    note: "the tamborzão rhythm with a bell and a low boom",
+    code: `// baile
 key d minor
-tempo 96
-chords i VI III VII
+tempo 130
 
-theme = 0 2 4 _ 6 4 . 2
-def lift n = up n > fast 2
+kick: beat("tamborzao").s("bd").shape(.3)
+snare: beat("backbeat").s("sd").gain(.7)
+bell: beat("batida").s("cb").gain(.4)
+hats: s("hh*8").gain(.3)
 
-lead: theme
-  > every 4 rev
-  > when bar > 8 (lift 2)
-  > high > triangle > ghost
-
-bass: 0 . 0 [. 0] > low > sawtooth > pump
-pad: chord > slow 2 > pad > bloom > gain 0.5
-kick: euclid 4 16 > bd
-hats: euclid 7 16 > hh > gain 0.35 > someCyclesBy 0.3 (fast 2)`,
+boom: n("0 ~ ~ 0 ~ ~ 3 ~").s("sine").octave(1).gain(1.2).tape(.3)
+stab: chord("<Dm Bb>").voicing().struct(groove("tresillo")).s("square").lpf(1400).gain(.35)`,
   },
   {
-    name: "counting machine",
-    note: "arithmetic makes the melody: multiply, then wrap",
-    code: `key a minor
-tempo 112
-chords i iv v i
+    name: "chill · slow water",
+    note: "soft drums, a slow pad and an echoing melody",
+    code: `// slow water
+key e minor
+tempo 78
 
-notes: run 16 * 3 % 9 > penta > high > pluck > ghost 0.4
-bass: for i 0..3 (0 + i * 2) > low > sawtooth
-kick: euclid 3 8 > bd
-clap: . 0 . 0 > cp > gain 0.5`,
-  },
-  {
-    name: "fractal",
-    note: "grow turns three notes into nine, self-similar",
-    code: `key e phrygian
-tempo 84
+kick: beat("lazy").s("bd").gain(.8)
+rim: s("~ rim ~ rim").gain(.4).room(.5)
+hats: s("hh*8").gain(perlin.range(.15, .4))
 
-seed = 0 2 4
-fractal: seed > grow > high > bell > bloom
-  > every 2 flip
-drone: 0 > slow 4 > low > pad > tape
-pulse: euclid 5 16 > rim > gain 0.5`,
-  },
-  {
-    name: "drift garden",
-    note: "drift keeps the melody evolving on its own",
-    code: `key g lydian
-tempo 72
-
-melody = 0 4 2 6 _ 4
-lead: melody > drift 0.25 > high > sine > bloom > tape 0.3
-shadow: melody > rot 2 > slow 2 > triangle > ghost > gain 0.4
-bass: 0 _ _ 4 > low > triangle
-air: euclid 3 8 > oh > gain 0.25`,
-  },
-  {
-    name: "conditions",
-    note: "if, then and else decide the music by bar number",
-    code: `key c dorian
-tempo 100
-chords i IV i v
-
-riff = 0 2 3 4
-lead: if bar % 4 == 0 then riff * 2 else riff
-  > every 2 (rot 1)
-  > square > bright 0.4
-bass: 0 x 3 then 4 > low > sawtooth > pump 0.4
-beat: euclid 4 16 > bd
-snare: . 0 . 0 > sd`,
+pad: chord("<Em7 C^7 Am7 B7>").voicing().s("sawtooth").lpf(800).attack(.5).release(1.5).gain(.3).bloom(.7)
+lead: n("<0 2 4 ~> <~ 7 6 4>").s("sine").octave(5).ghost(.6).tape(.4).slow(2)`,
   },
 ];
