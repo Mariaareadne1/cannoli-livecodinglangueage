@@ -17,6 +17,8 @@ import { threadOfLine } from "../src/editor/sound-picker.js";
 import { cannoliToolAt } from "./panel/cannoli-tools.js";
 import { strudelPickerAt, readStrudelTimeline, applyStrudelTimeline } from "./strudel/pickers.js";
 import { blocksIn } from "./strudel/highlight.js";
+import { readStudio } from "../src/editor/studio.js";
+import { readStrudelStudio } from "./strudel/studio.js";
 
 const NO_STYLE = "none";
 const STRUDEL_TIMELINE_BARS = 16;
@@ -49,6 +51,7 @@ const cannoli = {
   classifier: () => classifyLine,
   restyle: (all, name) => restyled(all, name, /^style\b.*$/m, (n) => `style ${n}`),
   toolAt: cannoliToolAt,
+  studio: readStudio,
   timeline: (text, extraBars) => {
     const bars = timelineLength(text) + extraBars;
     return { kind: "timeline", bars, rows: readTimeline(text, bars).map((r) => ({ ...r, id: r.name })), apply: (id, on) => applyTimeline(text, id, on) };
@@ -88,6 +91,7 @@ async function strudel() {
     classifier: (text) => lineClassifier(text),
     restyle: (all, name) => restyled(all, name, /^style\(.*\).*$/m, (n) => `style("${n}")`),
     toolAt: strudelPickerAt,
+    studio: readStrudelStudio,
     timeline: (text, extraBars) => {
       const bars = STRUDEL_TIMELINE_BARS + extraBars;
       return { kind: "timeline", bars, rows: readStrudelTimeline(text, bars), apply: (id, on) => applyStrudelTimeline(text, id, on) };

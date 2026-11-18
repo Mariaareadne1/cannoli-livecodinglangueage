@@ -44,6 +44,8 @@ function ringArt(pattern) {
   return grid.map((row) => row.join(""));
 }
 
+const selectedPart = (tool, view) => Math.min(view.part ?? tool.cursorPart ?? 0, tool.parts.length - 1);
+
 const BUILD = {
   beat(tool, view) {
     if (view.grooves) {
@@ -131,6 +133,36 @@ const BUILD = {
       ],
     };
   },
+  kit(tool) {
+    if (tool.drums.length === 0 && tool.addable.length === 0) return { title: "drum kit", rows: [title("Name a part kick:, snare: or hats: and it appears here.")] };
+    const gapAt = (i) => i > 0 && i % tool.perBeat === 0;
+    const numbers = Array.from({ length: tool.stepCount }, (_, i) => cell(`n${i}`, i % tool.perBeat === 0 ? String(i / tool.perBeat + 1).padEnd(2) : "  ", { label: true, gap: gapAt(i) }));
+    const rows = tool.drums.map((part, r) => {
+      const mute = cell(`mute:${r}`, part.muted ? "[M]" : "[ ]", { on: part.muted, doc: `${part.muted ? "unmute" : "mute"} ${part.name}` });
+      if (part.steps?.length !== tool.stepCount) return { label: part.name, cells: [mute, cell(`locked:${r}`, "written by hand: change this one in the code", { label: true })] };
+      const hit = part.muted ? "▒▒" : "██";
+      const steps = part.steps.map((on, i) => cell(`step:${r}:${i}`, on ? hit : "░░", { on, gap: gapAt(i), doc: `${part.name}: beat ${Math.floor(i / tool.perBeat) + 1}, step ${(i % tool.perBeat) + 1}` }));
+      return { label: part.name, cells: [mute, ...steps] };
+    });
+    const add = tool.addable.length ? [{ label: "add", cells: tool.addable.map((k) => cell(`add:${k.name}`, `+ ${k.name}`, { doc: `adds a ${k.name} part to the code` })) }] : [];
+    return { title: "drum kit: every beat lines up", rows: [{ label: "", cells: [cell("mute-head", "   ", { label: true }), ...numbers] }, ...rows, ...add] };
+  },
+  mix(tool, view) {
+    if (tool.parts.length === 0) return { title: "mixer", rows: [title("Name a part, like kick: or lead:, and it appears here.")] };
+    const index = selectedPart(tool, view);
+    const part = tool.parts[index];
+    const effects = part.effects.map((e) => (e.locked
+      ? title(`${e.word} is written as ${e.locked}: change it in the code`)
+      : { slider: { id: `fx:${e.word}`, label: e.word, min: e.min, max: e.max, step: e.step, value: e.value } }));
+    return {
+      title: "mixer: every move rewrites the code",
+      rows: [
+        { label: "part", cells: tool.parts.map((p, i) => cell(`part:${i}`, p.muted ? `${p.name} (muted)` : p.name, { on: i === index })) },
+        { label: "mute", cells: [cell(`mute:${part.id}`, part.muted ? `unmute ${part.name}` : `mute ${part.name}`, { on: part.muted })] },
+        ...effects,
+      ],
+    };
+  },
   timeline(tool) {
     const numbers = Array.from({ length: tool.bars }, (_, i) => cell(`n${i}`, i % BARS_PER_GROUP === 0 ? String(i + 1).padEnd(2) : "  ", { label: true, gap: i > 0 && i % BARS_PER_GROUP === 0 }));
     return {
@@ -153,7 +185,7 @@ const flip = (list, i) => list.map((v, k) => (k === i ? !v : v));
 
 /**
  * What pressing a cell does.
- * @returns {{ change?: object, view?: object, close?: boolean, sound?: boolean }}
+ * @returns {{ change?: object, view?: object, close?: boolean, quiet?: boolean }}
  */
 export function perform(tool, id, view = {}, extra = {}) {
   const [name, a, b] = id.split(":");
@@ -196,6 +228,19 @@ export function perform(tool, id, view = {}, extra = {}) {
       if (name !== "slide") return {};
       const values = { hits: tool.hits, steps: tool.steps, rotation: tool.rotation, [a]: extra.value };
       return { change: tool.apply({ steps: values.steps, hits: Math.min(values.hits, values.steps), rotation: values.rotation % values.steps }) };
+    }
+    case "kit": {
+      const part = tool.drums[Number(a)];
+      if (name === "add") return { change: tool.addDrum(a) };
+      if (name === "mute") return { change: tool.setMute(part.id, !part.muted), quiet: true };
+      if (name !== "step") return {};
+      const steps = part.steps.map((on, i) => (i === Number(b) ? extra.value ?? !on : on));
+      return { change: tool.setSteps(part.id, steps) };
+    }
+    case "mix": {
+      if (name === "part") return { view: { ...view, part: Number(a) } };
+      if (name === "mute") return { change: tool.setMute(Number(a), !tool.parts[Number(a)].muted), quiet: true };
+      return name === "fx" ? { change: tool.setEffect(selectedPart(tool, view), a, extra.value) } : {};
     }
     case "timeline":
       if (name === "more") return { view: { ...view, extraBars: (view.extraBars ?? 0) + MORE_BARS } };

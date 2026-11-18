@@ -10,6 +10,7 @@
      while typing, a suggestion card pops up: ↑ ↓ choose, tab/enter insert, esc close,
      shift+tab writes out the whole line the card shows
      ctrl+e  choose a style (rave, house, funk, chill)
+     ctrl+d  drum kit    ctrl+x  mixer (mute and effects)    ctrl+l  song timeline
      ctrl+g  next theme      ctrl+z / ctrl+y  undo / redo
      ctrl+q  save and quit
    ============================================================ */
@@ -40,7 +41,9 @@ const PANEL_HINT = "click to choose · tab to use the keyboard · esc closes";
 const PANEL_FOCUS_HINT = "arrows move · space chooses · esc leaves";
 // ctrl+g cycles: the two families (each pane its own tone), then single tones for every pane
 const THEME_CYCLE = [...FAMILY_NAMES, ...Object.keys(THEMES).filter((n) => !FAMILIES[n])];
-const KEYS = "ctrl+s play · ctrl+t stop · ctrl+e style · ctrl+f fix · ctrl+b grid · ctrl+l timeline · ctrl+g theme · ctrl+q quit";
+const KEYS = "ctrl+s play · ctrl+t stop · ctrl+d drums · ctrl+x mixer · ctrl+l timeline · ctrl+b grid · ctrl+e style · ctrl+f fix · ctrl+g theme · ctrl+q quit";
+const SONG_TOOLS = { l: "timeline", d: "kit", x: "mix" };   // the panels that belong to the whole song
+const PAINTED_TOOLS = ["timeline", "kit"];
 const NO_STYLE = "none";
 
 export async function edit(file = "song.strudel", opts = {}) {
@@ -62,7 +65,7 @@ export async function edit(file = "song.strudel", opts = {}) {
     card: null,       // the suggestion card: { items, from, to, selected }
     panel: null,      // the tool under the cursor: { tool, view, focus, lines, box }
     dismissedLine: null,
-    timelineOpen: false,
+    songTool: null,   // "timeline", "kit" or "mix" while one is open
     lastHit: 0,
     hits: [],
   };
@@ -222,8 +225,11 @@ export async function edit(file = "song.strudel", opts = {}) {
     const old = state.panel;
     if (state.dismissedLine !== null && state.dismissedLine !== state.buf.row) state.dismissedLine = null;
     let tool = null;
-    if (state.timelineOpen) tool = language.timeline(text(), old?.view?.extraBars ?? 0);
-    else if (!state.card && state.dismissedLine === null) tool = language.toolAt(text(), B.offsetOf(state.buf), { minColumns: old?.view?.minColumns ?? 0 });
+    if (state.songTool === "timeline") tool = language.timeline(text(), old?.view?.extraBars ?? 0);
+    else if (state.songTool) {
+      const studio = language.studio(text());
+      tool = { ...studio, kind: state.songTool, cursorPart: studio.partAt(B.offsetOf(state.buf)) };
+    } else if (!state.card && state.dismissedLine === null) tool = language.toolAt(text(), B.offsetOf(state.buf), { minColumns: old?.view?.minColumns ?? 0 });
     if (!tool) {
       state.panel = null;
       pane?.setMouse(false);
@@ -253,7 +259,7 @@ export async function edit(file = "song.strudel", opts = {}) {
 
   let previewTimer = null;
   /* Hear what was just changed: in the music while playing, otherwise a moment of that part. */
-  function hearIt() {
+  function hearIt({ at = B.offsetOf(state.buf), quiet = false } = {}) {
     clearTimeout(previewTimer);
     previewTimer = setTimeout(async () => {
       if (!engine) return;
@@ -262,8 +268,8 @@ export async function edit(file = "song.strudel", opts = {}) {
       if (engine.playing) {
         state.runText = text();
         await Promise.resolve(language.apply(engine, program)).catch((err) => say(err.message, "bad"));
-      } else {
-        language.preview(engine, text(), B.offsetOf(state.buf));
+      } else if (!quiet) {
+        language.preview(engine, text(), at);
       }
     }, PREVIEW_DEBOUNCE_MS);
   }
@@ -274,11 +280,13 @@ export async function edit(file = "song.strudel", opts = {}) {
     if (result.view) state.panel = { ...state.panel, view: result.view };
     if (result.close) {
       state.dismissedLine = state.buf.row;
-      state.timelineOpen = false;
+      state.songTool = null;
     }
     if (result.change) {
       applyEdit(result.change);
-      hearIt();
+      const isSongPart = tool.kind === "kit" || tool.kind === "mix";
+      const { start, text: written } = result.change;
+      hearIt({ quiet: result.quiet, at: isSongPart ? start + (written.startsWith("\n") ? 1 : 0) : undefined });
     }
     refreshPanel();
   }
@@ -336,7 +344,7 @@ export async function edit(file = "song.strudel", opts = {}) {
     if (key.drag) return dragTo(target);
     const startsOn = target.on;
     state.panel = { ...state.panel, drag: { id: target.id, paint: !startsOn } };
-    act(target.alias ?? target.id, panel.tool.kind === "timeline" ? { value: !startsOn } : undefined);
+    act(target.alias ?? target.id, PAINTED_TOOLS.includes(panel.tool.kind) ? { value: !startsOn } : undefined);
   }
 
   /* Dragging along a row: paint timeline bars, or hold a melody note. */
@@ -347,6 +355,7 @@ export async function edit(file = "song.strudel", opts = {}) {
     const [, startA, startB] = drag.id.split(":");
     state.panel = { ...state.panel, drag: { ...drag, last: target.id } };
     if (tool.kind === "timeline" && kind === "bar" && a === startA) act(target.id, { value: drag.paint });
+    if (tool.kind === "kit" && kind === "step" && a === startA) act(target.id, { value: drag.paint });
     if (tool.kind === "melody" && kind === "note" && a === startA && Number(b) > Number(startB)) act(`hold:${b}`, { from: Number(startB) });
   }
 
@@ -355,7 +364,7 @@ export async function edit(file = "song.strudel", opts = {}) {
     if (row < 0 || row >= state.buf.lines.length) return;
     const col = Math.max(0, Math.min(state.buf.lines[row].length, state.scroll.col + key.col - GUTTER - 1));
     state.buf = { ...state.buf, row, col };
-    state.timelineOpen = false;
+    state.songTool = null;
     refreshPanel();
   }
 
@@ -376,11 +385,11 @@ export async function edit(file = "song.strudel", opts = {}) {
       if (state.panel) state.panel = { ...state.panel, focus: state.panel.focus ? null : firstFocus(state.panel.lines) };
       return;
     }
-    if (key.ctrl && k === "l") {
-      state.timelineOpen = !state.timelineOpen;
+    if (key.ctrl && SONG_TOOLS[k]) {
+      state.songTool = state.songTool === SONG_TOOLS[k] ? null : SONG_TOOLS[k];
       state.card = null;
       refreshPanel();
-      if (state.panel && state.timelineOpen) state.panel = { ...state.panel, focus: firstFocus(state.panel.lines) };
+      if (state.panel && state.songTool) state.panel = { ...state.panel, focus: firstFocus(state.panel.lines) };
       return;
     }
     if (state.panel?.focus && !key.ctrl && !key.meta) return onPanelKey(str, key);
@@ -390,7 +399,7 @@ export async function edit(file = "song.strudel", opts = {}) {
     }
     if (k === "escape" && state.panel && !state.card) {
       state.dismissedLine = state.buf.row;
-      state.timelineOpen = false;
+      state.songTool = null;
       refreshPanel();
       return;
     }
@@ -459,7 +468,9 @@ export async function edit(file = "song.strudel", opts = {}) {
     if (!panel) return null;
     const { rows, scroll: lineScroll } = drawPanel(panel.lines, panel.focus, th, panel.width, codeHeight(), panel.focus ? PANEL_FOCUS_HINT : PANEL_HINT);
     const below = state.buf.row - scroll.row + 1;
-    const top = below + rows.length <= codeHeight() ? below : Math.max(0, Math.min(codeHeight() - rows.length, below - 1 - rows.length));
+    // a song-wide panel sits at the bottom, so the code it rewrites stays in view
+    const beside = below + rows.length <= codeHeight() ? below : Math.max(0, Math.min(codeHeight() - rows.length, below - 1 - rows.length));
+    const top = state.songTool ? Math.max(0, codeHeight() - rows.length) : beside;
     const box = { rows, top, left: 0, width: panel.width, scroll: lineScroll, solid: true };
     state.panel = { ...panel, box };
     return box;

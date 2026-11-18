@@ -5,6 +5,7 @@ import { plainFrame, fg, bg, BOLD, RESET, REVERSE, UNDERLINE } from "../cli/ansi
 import { buildPanel, perform } from "../cli/panel/model.js";
 import { layoutPanel, firstFocus, moveFocus, focused, hitTest, sliderValueAt, clampToStep } from "../cli/panel/layout.js";
 import { strudelPickerAt } from "../cli/strudel/pickers.js";
+import { readStudio } from "../src/editor/studio.js";
 
 const WIDTH = 78;
 const edit = (text, c) => text.slice(0, c.start) + c.text + text.slice(c.end);
@@ -56,4 +57,25 @@ test("a slider's value follows the column and stays on its steps", () => {
 test("a plain frame keeps its text and selection but loses every colour", () => {
   const frame = `${bg("#102030")}${fg("#ffffff")}${BOLD}kick${RESET} ${REVERSE}on${RESET} ${UNDERLINE}off${RESET}\x1b[3;4H`;
   assert.equal(plainFrame(frame), `kick${RESET} ${REVERSE}on${RESET} ${UNDERLINE}off${RESET}\x1b[3;4H`);
+});
+
+test("the drum kit lines every part up with the beat numbers", () => {
+  const studio = readStudio("kick: beat fourfloor > bd\nsnare: beat backbeat > sd\n");
+  const lines = layoutPanel(buildPanel({ ...studio, kind: "kit", cursorPart: 0 }), WIDTH);
+  const [head, kick, snare] = lines.slice(1).map((l) => l.cells.map((c) => c.x));
+  assert.deepEqual(kick, head);
+  assert.deepEqual(snare, head);
+});
+
+test("pressing the kit and mixer writes code", () => {
+  const text = "kick: beat fourfloor > bd\nlead: 0 2 > sine\n";
+  const studio = readStudio(text);
+  const kit = { ...studio, kind: "kit", cursorPart: 0 };
+  assert.equal(edit(text, perform(kit, "mute:0").change), "kick: beat fourfloor > bd > hush\nlead: 0 2 > sine\n");
+  assert.equal(perform(kit, "mute:0").quiet, true);
+  assert.match(edit(text, perform(kit, "step:0:1", {}, { value: true }).change), /^kick: 0 0 \. \. 0 \. \. \. 0 \. \. \. 0 \. \. \. > bd/);
+  const mix = { ...studio, kind: "mix", cursorPart: 1 };
+  assert.match(edit(text, perform(mix, "fx:bloom", {}, { value: 0.4 }).change), /lead: 0 2 > sine > bloom 0\.4/);
+  assert.match(edit(text, perform(mix, "fx:bloom", { part: 0 }, { value: 0.4 }).change), /kick: beat fourfloor > bd > bloom 0\.4/);
+  assert.deepEqual(perform(mix, "part:0", {}).view, { part: 0 });
 });
