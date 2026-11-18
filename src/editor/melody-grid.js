@@ -14,7 +14,7 @@ const HOLD = "hold";
 const STEPS_PER_BEAT = 2;
 const MOST_COLUMNS = 64;
 const TOKEN_RE = /\[|\]|,|_|\.|-?\d+/g;
-const MELODIC_NAMES = ["lead", "melody", "riff", "hook", "synth", "bass", "keys", "piano", "pluck", "bell", "vox", "voice", "echo", "counter", "theme"];
+export const MELODIC_NAMES = ["lead", "melody", "riff", "hook", "synth", "bass", "keys", "piano", "pluck", "bell", "vox", "voice", "echo", "counter", "theme"];
 const SCALE_LENGTH = 7;
 const TOP_ROW = 9;
 

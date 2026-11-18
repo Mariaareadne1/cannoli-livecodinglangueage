@@ -11,8 +11,16 @@ import { complete } from "../src/editor/complete.js";
 import { classifyLine } from "../src/editor/highlight.js";
 import { Engine } from "../src/audio/engine.js";
 import { STYLES } from "../src/core/styles.js";
+import { renderBar } from "../src/core/render.js";
+import { readTimeline, applyTimeline, timelineLength } from "../src/editor/timeline.js";
+import { threadOfLine } from "../src/editor/sound-picker.js";
+import { cannoliToolAt } from "./panel/cannoli-tools.js";
+import { strudelPickerAt, readStrudelTimeline, applyStrudelTimeline } from "./strudel/pickers.js";
+import { blocksIn } from "./strudel/highlight.js";
 
 const NO_STYLE = "none";
+const STRUDEL_TIMELINE_BARS = 16;
+const PREVIEW_SEARCH_BARS = 32;
 
 /** Which language a file is written in. */
 export function languageOf(file) {
@@ -40,6 +48,22 @@ const cannoli = {
   complete: (text, cursor, symbols) => complete(text, cursor, symbols),
   classifier: () => classifyLine,
   restyle: (all, name) => restyled(all, name, /^style\b.*$/m, (n) => `style ${n}`),
+  toolAt: cannoliToolAt,
+  timeline: (text, extraBars) => {
+    const bars = timelineLength(text) + extraBars;
+    return { kind: "timeline", bars, rows: readTimeline(text, bars).map((r) => ({ ...r, id: r.name })), apply: (id, on) => applyTimeline(text, id, on) };
+  },
+  /* One bar of the thread under the cursor. */
+  preview(engine, text, offset) {
+    const thread = threadOfLine(text, text.lastIndexOf("\n", offset - 1) + 1);
+    const { errors, program } = compile(text);
+    if (!thread || errors.length) return;
+    for (let bar = 0; bar < PREVIEW_SEARCH_BARS; bar++) {
+      const list = renderBar(program, bar).filter((n) => n.thread === thread);
+      if (list.length) { engine.previewBar({ list, settings: program.settings }); return; }
+    }
+  },
+  apply: (engine, program) => engine.live(program),
   async makeEngine() {
     const { AudioContext } = await import("node-web-audio-api");
     // changes land on the next bar anyway, so a bigger buffer costs nothing and rides out busy moments
@@ -63,6 +87,20 @@ async function strudel() {
     complete: (text, cursor) => completeStrudel(text, cursor),
     classifier: (text) => lineClassifier(text),
     restyle: (all, name) => restyled(all, name, /^style\(.*\).*$/m, (n) => `style("${n}")`),
+    toolAt: strudelPickerAt,
+    timeline: (text, extraBars) => {
+      const bars = STRUDEL_TIMELINE_BARS + extraBars;
+      return { kind: "timeline", bars, rows: readStrudelTimeline(text, bars), apply: (id, on) => applyStrudelTimeline(text, id, on) };
+    },
+    /* One cycle of the pattern under the cursor. */
+    preview(engine, text, offset) {
+      const blocks = blocksIn(text);
+      const index = blocks.findLastIndex((b) => b.start <= offset);
+      if (index < 0) return engine.preview(text).catch(() => {});
+      const body = text.slice(blocks[index].start, blocks[index + 1]?.start ?? text.length).replace(/^[A-Za-z_$][\w$]*:\s*/, "");
+      return engine.preview(body).catch(() => {});
+    },
+    apply: (engine, program) => engine.update(program),
     makeEngine: (opts) => new StrudelEngine(opts).boot(),
   };
 }

@@ -224,7 +224,7 @@ export function euclidSteps(hits, steps, rotation = 0) {
     back = rest;
   }
   const pattern = [...front, ...back].flat();
-  const turn = mod(rotation, steps);
+  const turn = mod(-rotation, steps);   // as in Strudel: the hits move later
   return [...pattern.slice(turn), ...pattern.slice(0, turn)];
 }
 

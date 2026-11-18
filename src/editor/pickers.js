@@ -20,7 +20,7 @@ const STEPS_PER_BEAT = 4;
 const GROOVE_STEPS = 16;
 const BARS = 16;
 const DEFAULT_VERB = "rev";
-const THREAD_DRUMS = {
+export const THREAD_DRUMS = {
   kick: "bd", bd: "bd", drum: "bd", drums: "bd",
   snare: "sd", sd: "sd",
   hat: "hh", hats: "hh", hihat: "hh", hh: "hh",

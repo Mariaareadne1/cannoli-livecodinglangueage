@@ -54,7 +54,14 @@ export function runPane({ fps = 15, render, onKey, onExit }) {
   const out = process.stdout;
   let last = "";
   let timer = null;
+  let mouseOn = false;
   const painter = windowPainter();
+  /* Only report the mouse while something can be clicked, so selecting text works the rest of the time. */
+  const setMouse = (on) => {
+    if (on === mouseOn) return;
+    mouseOn = on;
+    out.write(`${CSI}?1002${on ? "h" : "l"}${CSI}?1006${on ? "h" : "l"}`);
+  };
 
   const draw = () => {
     const width = out.columns || 80;
@@ -71,6 +78,7 @@ export function runPane({ fps = 15, render, onKey, onExit }) {
 
   const exit = (code = 0) => {
     clearInterval(timer);
+    setMouse(false);
     painter.restore();
     out.write(`${RESET}${CSI}?25h${CSI}?1049l`);
     if (process.stdin.isTTY) process.stdin.setRawMode(false);
@@ -97,5 +105,5 @@ export function runPane({ fps = 15, render, onKey, onExit }) {
   process.on("SIGHUP", () => exit(0));
   timer = setInterval(draw, Math.round(1000 / fps));
   draw();
-  return { exit, redraw: draw };
+  return { exit, redraw: draw, setMouse };
 }

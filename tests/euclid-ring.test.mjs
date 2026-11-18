@@ -12,14 +12,14 @@ const on = (text, word = "euclid") => pickerAt(text, text.indexOf(word) + 1);
 
 test("euclidRot turns the rhythm so it starts later in the pattern", () => {
   assert.equal(shown(euclidSteps(3, 8, 0)), "x..x..x.");
-  assert.equal(shown(euclidSteps(3, 8, 2)), ".x..x.x.");
+  assert.equal(shown(euclidSteps(3, 8, 2)), "x.x..x..", "the same as Strudel's euclidRot(3, 8, 2)");
   assert.equal(shown(euclidSteps(3, 8, 8)), "x..x..x.");
 });
 
 test("it plays in the language", () => {
   const { errors, program } = compile("a: euclidRot 3 8 2 > bd\n");
   assert.deepEqual(errors, []);
-  assert.deepEqual(renderBar(program, 0).map((n) => n.start * 8), [1, 4, 6]);
+  assert.deepEqual(renderBar(program, 0).map((n) => n.start * 8), [0, 2, 5]);
 });
 
 test("the cursor on euclid opens the ring", () => {

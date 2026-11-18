@@ -8,7 +8,7 @@
 import { catalog } from "./catalog.js";
 
 const MAX_ITEMS = 40;
-const SOUNDS = [
+export const SOUNDS = [
   ["bd", "bass drum"], ["sd", "snare"], ["hh", "closed hi-hat"], ["oh", "open hi-hat"], ["cp", "clap"], ["rim", "rimshot"],
   ["lt", "low tom"], ["mt", "mid tom"], ["ht", "high tom"], ["cb", "cowbell"], ["cr", "crash"], ["rd", "ride"], ["sh", "shaker"], ["tb", "tambourine"], ["perc", "percussion"],
   ["sine", "a pure tone"], ["triangle", "soft and round"], ["square", "hollow and reedy"], ["sawtooth", "bright and buzzy"], ["supersaw", "wide and detuned"],

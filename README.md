@@ -144,7 +144,7 @@ lead: n("0 [2 4] <7 5> 4").scale("A:minor").s("triangle").every(4, rev).bloom(.5
 
 Try `songs/first-steps.strudel` and `songs/baile-strudel.strudel`.
 
-**Everything in the terminal works with Strudel:** the suggestion card (every function, described by Strudel's own docs), whole lines when you name a part (`kick:`, `bass:`, `arp:`), mistakes and typos caught as you type with `ctrl+f` fixes, notes lighting up in the code as they play, the guide, the full reference, the beat grid, the shark visual, themes, the style picker and the stage.
+**Everything in the terminal works with Strudel:** the suggestion card (every function, described by Strudel's own docs), whole lines when you name a part (`kick:`, `bass:`, `arp:`), mistakes and typos caught as you type with `ctrl+f` fixes, notes lighting up in the code as they play, the guide, the full reference, the click-to-edit grids, the beat grid pane, the shark visual, themes, the style picker and the stage.
 
 **What cannoli adds to Strudel:**
 
@@ -164,7 +164,7 @@ Try `songs/first-steps.strudel` and `songs/baile-strudel.strudel`.
 - The output has a limiter so busy songs don't clip. It's the only change to Strudel's sound.
 - Strudel's web-page pictures (`.pianoroll()`, `.scope()` and so on) are accepted and ignored; the visual and threads panes do that job here.
 - Changes in a `.strudel` file apply as soon as you press `ctrl+s`, as they do in Strudel.
-- Not available in the terminal yet: Hydra visuals, MIDI, OSC, and the web app's click-to-edit grids.
+- Not available in the terminal yet: Hydra visuals, MIDI and OSC.
 
 ### Install it
 
@@ -227,9 +227,35 @@ They find the editor by themselves.
 | `shift+tab` | write out the whole line the card shows |
 | `ctrl+e` | choose a style (rave, house, funk, chill, none). It rewrites the `style` line; while playing, it lands on the next bar |
 | `ctrl+f` | apply the fix for the problem on this line |
+| `ctrl+b` | move the keyboard into the open grid, or back to the code (`tab` also moves in) |
+| `ctrl+l` | open the song timeline |
 | `ctrl+g` | next theme |
 | `ctrl+z` / `ctrl+y` | undo / redo |
 | `ctrl+q` | save and quit |
+
+### Grids and pickers
+
+Put the cursor on a part of a line and a panel opens under it. Every change writes the code for you, in `.strudel` and `.cannoli` files alike. While the song plays, you hear changes straight away.
+
+| Cursor on | What opens |
+|---|---|
+| a drum pattern, `s("bd*4")` | beat grid, with a list of grooves |
+| notes, `n("0 2 4 7")` | melody grid (drag right to hold a note) |
+| a sound, `.s("triangle")` | sound picker |
+| `.gain(.5)`, `.lpf(800)` and other amounts | slider |
+| `.every(4, rev)`, `.when(...)` | bar picker and verb menu |
+| `.sometimes(...)` and its family | verb menu with a chance slider |
+| `chord("<Am F>")` | chord picker |
+| `.scale("A:minor")` or a `key` line | key picker |
+| `.groove("tresillo")` | groove picker |
+| `euclid`, or `"bd(3,8)"` | euclid ring |
+| a blank `kick:` or `lead:` line | a grid that writes the line |
+
+**With the mouse:** click to choose, and drag sliders, held notes and timeline bars.
+
+**With the keyboard:** `ctrl+b` moves into the panel, the arrows move, `space` chooses, `+` holds a melody note, and `esc` goes back to the code. A second `esc` closes the panel for that line.
+
+While a panel is open the terminal sends mouse clicks to cannoli, so hold `option` (Terminal, iTerm2) or `shift` (most others) to select text.
 
 ![In the terminal, a blank thread offers whole lines to fill in](docs/screenshots/terminal-fill.png)
 

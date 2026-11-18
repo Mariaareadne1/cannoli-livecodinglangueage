@@ -16,6 +16,8 @@ const SEQUENCES = {
   "\x1b[3~": "delete", "\x1b[5~": "pageup", "\x1b[6~": "pagedown", "\x1b[Z": "shift-tab",
 };
 const CSI_RE = /^\x1b(\[[0-9;]*[A-Za-z~]|O[A-Z])/;
+const MOUSE_RE = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])/;
+const MOTION_BIT = 32;
 
 /**
  * @param {string} chunk  what the terminal sent in one read
@@ -28,6 +30,13 @@ export function parseKeys(chunk) {
     const rest = chunk.slice(i);
     const ch = chunk[i];
     if (ch === "\x1b") {
+      const mouse = rest.match(MOUSE_RE);
+      if (mouse) {
+        const code = Number(mouse[1]);
+        keys.push({ name: "mouse", col: Number(mouse[2]), row: Number(mouse[3]), drag: Boolean(code & MOTION_BIT), release: mouse[4] === "m" });
+        i += mouse[0].length;
+        continue;
+      }
       const csi = rest.match(CSI_RE);
       if (csi) {
         keys.push({ name: SEQUENCES[csi[0]] ?? "unknown" });

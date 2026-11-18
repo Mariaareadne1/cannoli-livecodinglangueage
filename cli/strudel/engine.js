@@ -18,6 +18,7 @@ const LIMIT_THRESHOLD_DB = -4;
 const LIMITED_LEVEL = 0.6;        // a compressor makes itself louder, and Strudel's mix is hot already
 const SOFT_CLIP_DRIVE = 1.2;
 const SOFT_CLIP_POINTS = 2048;
+const PREVIEW_DELAY_S = 0.05;
 const DRUMS = { bd: "kick", sd: "snare", hh: "hat", oh: "open", cp: "clap", rim: "rim", rm: "rim", lt: "tom", mt: "tom", ht: "tom", cb: "cowbell", sh: "shaker" };
 
 /** Which of the editor's drums a sound is, if any. */
@@ -52,8 +53,10 @@ export class StrudelEngine {
     this.ctx = new Output();
     audio.superdough.setAudioContext(this.ctx);
     await audio.superdough.initAudio({});
-    this.output = limitOutput(this.ctx, audio.superdough.getSuperdoughAudioController().output.destinationGain);
+    this.limited = limitOutput(this.ctx, audio.superdough.getSuperdoughAudioController().output.destinationGain);
     this.sounds = loadSounds(audio);
+    this.transpiler = transpiler;
+    this.output = audio.webaudio.webaudioOutput;
     this.repl = core.repl({
       defaultOutput: audio.webaudio.webaudioOutput,
       getTime: () => this.ctx.currentTime,
@@ -83,6 +86,18 @@ export class StrudelEngine {
     this.stopping = false;
     this.timer ??= setInterval(() => this.tick(), TICK_MS);
     this.tick();
+  }
+
+  /** Sound one cycle of this code, while stopped: for hearing what you just picked. */
+  async preview(code) {
+    if (this.playing) return;
+    const { pattern } = await this.core.evaluate(code, this.transpiler);
+    if (!pattern) return;
+    const cps = this.repl.scheduler.cps;
+    const start = this.ctx.currentTime + PREVIEW_DELAY_S;
+    for (const hap of pattern.queryArc(0, 1, { _cps: cps }).filter((h) => h.hasOnset())) {
+      this.output(hap, 0, hap.duration / cps, cps, start + hap.whole.begin / cps);
+    }
   }
 
   /** Strudel applies a change as soon as it's evaluated. */

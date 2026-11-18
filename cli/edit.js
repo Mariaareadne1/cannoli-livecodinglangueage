@@ -23,17 +23,24 @@ import * as B from "./buffer.js";
 import { runPane, fg, bg, RESET, BOLD, ITALIC, fit } from "./ansi.js";
 import { codeLine } from "./code-ansi.js";
 import { startHub } from "./link.js";
+import { buildPanel, perform } from "./panel/model.js";
+import { layoutPanel, firstFocus, moveFocus, focused, hitTest, sliderValueAt, clampToStep, drawPanel } from "./panel/layout.js";
 import { loadPrefs, savePrefs } from "./prefs.js";
 
 const GUTTER = 6;
+const CODE_TOP = 3;          // the screen row of the first line of code
 const BROADCAST_MS = 60;
 const MESSAGE_MS = 4000;
 const UNDO_LIMIT = 200;
 const CARD_ITEMS = 7;
 const CARD_W = 46;
+const PANEL_W = 78;
+const PREVIEW_DEBOUNCE_MS = 140;
+const PANEL_HINT = "click to choose · tab to use the keyboard · esc closes";
+const PANEL_FOCUS_HINT = "arrows move · space chooses · esc leaves";
 // ctrl+g cycles: the two families (each pane its own tone), then single tones for every pane
 const THEME_CYCLE = [...FAMILY_NAMES, ...Object.keys(THEMES).filter((n) => !FAMILIES[n])];
-const KEYS = "ctrl+s play · ctrl+t stop · ctrl+e style · ctrl+f fix · ctrl+g theme · ctrl+z undo · ctrl+q quit";
+const KEYS = "ctrl+s play · ctrl+t stop · ctrl+e style · ctrl+f fix · ctrl+b grid · ctrl+l timeline · ctrl+g theme · ctrl+q quit";
 const NO_STYLE = "none";
 
 export async function edit(file = "song.strudel", opts = {}) {
@@ -53,11 +60,15 @@ export async function edit(file = "song.strudel", opts = {}) {
     runText: null,
     message: null,
     card: null,       // the suggestion card: { items, from, to, selected }
+    panel: null,      // the tool under the cursor: { tool, view, focus, lines, box }
+    dismissedLine: null,
+    timelineOpen: false,
     lastHit: 0,
     hits: [],
   };
   const engine = await language.makeEngine({ silent: Boolean(opts.silent) }).catch(() => null);
   const hub = startHub();
+  let pane = null;
 
   /* ---------- editing ---------- */
 
@@ -205,6 +216,149 @@ export async function edit(file = "song.strudel", opts = {}) {
     if (items[selected].insert.endsWith(" ")) refreshCard();
   }
 
+  /* ---------- the click-to-edit panel ---------- */
+
+  function refreshPanel() {
+    const old = state.panel;
+    if (state.dismissedLine !== null && state.dismissedLine !== state.buf.row) state.dismissedLine = null;
+    let tool = null;
+    if (state.timelineOpen) tool = language.timeline(text(), old?.view?.extraBars ?? 0);
+    else if (!state.card && state.dismissedLine === null) tool = language.toolAt(text(), B.offsetOf(state.buf), { minColumns: old?.view?.minColumns ?? 0 });
+    if (!tool) {
+      state.panel = null;
+      pane?.setMouse(false);
+      return;
+    }
+    const same = old?.tool.kind === tool.kind && old.row === state.buf.row;
+    const panel = { tool, view: same ? old.view : {}, focus: same ? old.focus : null, row: state.buf.row, drag: same ? old.drag : null };
+    state.panel = placed(panel);
+    pane?.setMouse(true);
+  }
+
+  function placed(panel) {
+    const width = Math.min(PANEL_W, Math.max(30, lastWidth - GUTTER));
+    const lines = layoutPanel(buildPanel(panel.tool, panel.view), width);
+    const keep = panel.focus && lines[panel.focus.line] ? panel.focus : panel.focus ? firstFocus(lines) : null;
+    return { ...panel, lines, width, focus: keep };
+  }
+
+  /* Keep the caret where it was, relative to the text around it. */
+  function applyEdit(edit) {
+    const offset = B.offsetOf(state.buf);
+    const growth = edit.text.length - (edit.end - edit.start);
+    const caret = offset <= edit.start ? offset : offset >= edit.end ? offset + growth : Math.min(offset, edit.start + Math.max(0, edit.text.length - 1));
+    const next = B.replaceRange(state.buf, edit.start, edit.end, edit.text);
+    change({ ...next, ...B.positionOf(next.lines, caret) });
+  }
+
+  let previewTimer = null;
+  /* Hear what was just changed: in the music while playing, otherwise a moment of that part. */
+  function hearIt() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(async () => {
+      if (!engine) return;
+      const { errors, program } = compile(text());
+      if (errors.length) return;
+      if (engine.playing) {
+        state.runText = text();
+        await Promise.resolve(language.apply(engine, program)).catch((err) => say(err.message, "bad"));
+      } else {
+        language.preview(engine, text(), B.offsetOf(state.buf));
+      }
+    }, PREVIEW_DEBOUNCE_MS);
+  }
+
+  function act(id, extra) {
+    const { tool, view } = state.panel;
+    const result = perform(tool, id, view, extra);
+    if (result.view) state.panel = { ...state.panel, view: result.view };
+    if (result.close) {
+      state.dismissedLine = state.buf.row;
+      state.timelineOpen = false;
+    }
+    if (result.change) {
+      applyEdit(result.change);
+      hearIt();
+    }
+    refreshPanel();
+  }
+
+  /* A press on whatever has the focus, or a nudge of a slider. */
+  function pressFocus() {
+    const target = focused(state.panel.lines, state.panel.focus);
+    if (target && !target.min && target.id && !("value" in target)) act(target.alias ?? target.id);
+  }
+
+  function nudge(direction) {
+    const slider = focused(state.panel.lines, state.panel.focus);
+    act(slider.id, { value: clampToStep(slider, slider.value + direction * slider.step) });
+  }
+
+  function onPanelKey(str, key) {
+    const k = key.name;
+    const { lines, focus } = state.panel;
+    const target = focused(lines, focus);
+    if (k === "escape") {
+      state.panel = { ...state.panel, focus: null };
+    } else if ((k === "left" || k === "right") && target && "value" in target) {
+      nudge(k === "right" ? 1 : -1);
+    } else if (["up", "down", "left", "right"].includes(k)) {
+      state.panel = { ...state.panel, focus: moveFocus(lines, focus, k) };
+    } else if (k === "return" || k === "enter" || str === " ") {
+      pressFocus();
+    } else if ((str === "+" || str === "=") && target?.id?.startsWith("note:") && state.panel.tool.kind === "melody") {
+      const column = Number(target.id.split(":")[2]);
+      const from = state.panel.tool.cells.slice(0, column + 1).findLastIndex(Array.isArray);
+      if (from >= 0) act(`hold:${column + 1}`, { from });
+    }
+  }
+
+  function onMouse(key) {
+    const panel = state.panel;
+    if (!panel?.box) return;
+    const line = key.row - CODE_TOP - panel.box.top + panel.box.scroll;
+    const col = key.col - GUTTER - panel.box.left - 1;
+    const inside = key.row >= CODE_TOP + panel.box.top && key.row < CODE_TOP + panel.box.top + panel.box.rows.length - 1 && col >= 0 && col < panel.width;
+    if (key.release) {
+      state.panel = { ...panel, drag: null };
+      return;
+    }
+    if (!inside) {
+      if (!key.drag) moveCaretTo(key);
+      return;
+    }
+    const hit = hitTest(panel.lines, line, col);
+    if (!hit) return;
+    // a click leaves the keyboard with the code, so you can go straight back to typing
+    if (panel.focus) state.panel = { ...panel, focus: { line: hit.line, index: hit.index } };
+    if (hit.slider) return act(hit.slider.id, { value: sliderValueAt(hit.slider, col, panel.width) });
+    const target = focused(panel.lines, hit);
+    if (key.drag) return dragTo(target);
+    const startsOn = target.on;
+    state.panel = { ...state.panel, drag: { id: target.id, paint: !startsOn } };
+    act(target.alias ?? target.id, panel.tool.kind === "timeline" ? { value: !startsOn } : undefined);
+  }
+
+  /* Dragging along a row: paint timeline bars, or hold a melody note. */
+  function dragTo(target) {
+    const { drag, tool } = state.panel;
+    if (!drag || target.id === drag.last) return;
+    const [kind, a, b] = target.id.split(":");
+    const [, startA, startB] = drag.id.split(":");
+    state.panel = { ...state.panel, drag: { ...drag, last: target.id } };
+    if (tool.kind === "timeline" && kind === "bar" && a === startA) act(target.id, { value: drag.paint });
+    if (tool.kind === "melody" && kind === "note" && a === startA && Number(b) > Number(startB)) act(`hold:${b}`, { from: Number(startB) });
+  }
+
+  function moveCaretTo(key) {
+    const row = state.scroll.row + key.row - CODE_TOP;
+    if (row < 0 || row >= state.buf.lines.length) return;
+    const col = Math.max(0, Math.min(state.buf.lines[row].length, state.scroll.col + key.col - GUTTER - 1));
+    state.buf = { ...state.buf, row, col };
+    state.timelineOpen = false;
+    refreshPanel();
+  }
+
   function quit() {
     save();
     engine?.stop({ now: true });
@@ -217,6 +371,29 @@ export async function edit(file = "song.strudel", opts = {}) {
 
   function onKey(str, key) {
     const k = key.name;
+    if (k === "mouse") return onMouse(key);
+    if (key.ctrl && k === "b") {
+      if (state.panel) state.panel = { ...state.panel, focus: state.panel.focus ? null : firstFocus(state.panel.lines) };
+      return;
+    }
+    if (key.ctrl && k === "l") {
+      state.timelineOpen = !state.timelineOpen;
+      state.card = null;
+      refreshPanel();
+      if (state.panel && state.timelineOpen) state.panel = { ...state.panel, focus: firstFocus(state.panel.lines) };
+      return;
+    }
+    if (state.panel?.focus && !key.ctrl && !key.meta) return onPanelKey(str, key);
+    if (k === "tab" && state.panel && !state.card) {
+      state.panel = { ...state.panel, focus: firstFocus(state.panel.lines) };
+      return;
+    }
+    if (k === "escape" && state.panel && !state.card) {
+      state.dismissedLine = state.buf.row;
+      state.timelineOpen = false;
+      refreshPanel();
+      return;
+    }
     if (key.ctrl) {
       const actions = {
         s: run, t: stop, f: fixLine, q: quit, e: openStyleCard,
@@ -229,6 +406,7 @@ export async function edit(file = "song.strudel", opts = {}) {
         y: () => { if (state.redo.length) [state.undo, state.buf, state.redo] = [[...state.undo, state.buf], state.redo.at(-1), state.redo.slice(0, -1)]; state.result = compile(text()); },
       };
       actions[k]?.();
+      refreshPanel();
       return;
     }
     if (key.meta) return;
@@ -238,10 +416,11 @@ export async function edit(file = "song.strudel", opts = {}) {
         state.card = { ...state.card, selected: (state.card.selected + (k === "down" ? 1 : n - 1)) % n };
         return;
       }
-      if (k === "shift-tab") return acceptCard({ whole: true });
-      if (k === "tab" || k === "return" || k === "enter") return acceptCard();
+      if (k === "shift-tab") { acceptCard({ whole: true }); refreshPanel(); return; }
+      if (k === "tab" || k === "return" || k === "enter") { acceptCard(); refreshPanel(); return; }
       if (k === "escape") {
         state.card = null;
+        refreshPanel();
         return;
       }
     }
@@ -265,15 +444,33 @@ export async function edit(file = "song.strudel", opts = {}) {
     }
     if (typing) refreshCard();
     else state.card = null;
+    refreshPanel();
   }
 
   /* ---------- drawing ---------- */
 
   let height = 24;
+  let lastWidth = 100;
   const codeHeight = () => Math.max(1, height - 5);
+
+  /* The tool's panel, as rows to lay over the code. */
+  function panelBox(th, scroll) {
+    const panel = state.panel;
+    if (!panel) return null;
+    const { rows, scroll: lineScroll } = drawPanel(panel.lines, panel.focus, th, panel.width, codeHeight(), panel.focus ? PANEL_FOCUS_HINT : PANEL_HINT);
+    const below = state.buf.row - scroll.row + 1;
+    const top = below + rows.length <= codeHeight() ? below : Math.max(0, Math.min(codeHeight() - rows.length, below - 1 - rows.length));
+    const box = { rows, top, left: 0, width: panel.width, scroll: lineScroll, solid: true };
+    state.panel = { ...panel, box };
+    return box;
+  }
 
   function render({ width, height: h }) {
     height = h;
+    if (width !== lastWidth) {
+      lastWidth = width;
+      if (state.panel) state.panel = placed(state.panel);
+    }
     const th = paneTheme(state.themeName, "edit");
     const all = text();
     const lines = state.buf.lines;
@@ -288,7 +485,7 @@ export async function edit(file = "song.strudel", opts = {}) {
 
     const active = soundingTokens(all);
     const classify = language.classifier(all);
-    const card = cardBox(th, width, scroll);
+    const card = panelBox(th, scroll) ?? cardBox(th, width, scroll);
     const out = [titleBar(th, width), rule(th, width)];
     let offset = lines.slice(0, scroll.row).reduce((n, l) => n + l.length + 1, 0);
     for (let i = 0; i < codeHeight(); i++) {
@@ -310,7 +507,9 @@ export async function edit(file = "song.strudel", opts = {}) {
         : cardRow
           ? codeLine({ ...lineOpts, colStart: scroll.col, width: card.left })
             + cardRow
-            + codeLine({ ...lineOpts, colStart: scroll.col + card.left + card.width, width: codeW - card.left - card.width })
+            + (card.solid
+              ? `${bg(th.bg)}${fit("", Math.max(0, codeW - card.left - card.width))}${RESET}`
+              : codeLine({ ...lineOpts, colStart: scroll.col + card.left + card.width, width: codeW - card.left - card.width }))
           : codeLine({ ...lineOpts, colStart: scroll.col, width: codeW });
       out.push(gutter + code);
       offset += lines[r].length + 1;
@@ -318,7 +517,7 @@ export async function edit(file = "song.strudel", opts = {}) {
     out.push(rule(th, width), hintLine(th, width, probs), `${bg(th.bg)}${fg(th.faint)}${fit(` ${KEYS}`, width)}${RESET}`);
     return {
       frame: out.join("\r\n"),
-      cursor: { row: 3 + buf.row - scroll.row, col: GUTTER + 1 + buf.col - scroll.col },
+      cursor: state.panel?.focus ? null : { row: CODE_TOP + buf.row - scroll.row, col: GUTTER + 1 + buf.col - scroll.col },
       theme: th,
     };
   }
@@ -403,7 +602,7 @@ export async function edit(file = "song.strudel", opts = {}) {
       const fix = here.fix ? `   ctrl+f: ${here.fix.label}` : "";
       return `${bg(th.bg)}${fg(here.severity === "error" ? th.error : th.warn)}${fit(` ${here.severity === "error" ? "✕" : "!"} ${here.message}${fix}`, width)}${RESET}`;
     }
-    const s = suggestion();
+    const s = state.panel ? null : suggestion();
     if (s) return `${bg(th.bg)}${fg(th.dim)}${fit(` tab ▸ ${s.top.label}  —  ${s.top.doc}`, width)}${RESET}`;
     if (probs.length) return `${bg(th.bg)}${fg(th.dim)}${fit(` ${probs.length} problem${probs.length === 1 ? "" : "s"} elsewhere — first on line ${probs[0].row + 1}`, width)}${RESET}`;
     return `${bg(th.bg)}${fit("", width)}${RESET}`;
@@ -476,7 +675,8 @@ export async function edit(file = "song.strudel", opts = {}) {
   }
 
   setInterval(broadcast, BROADCAST_MS);
-  const pane = runPane({ fps: 20, render, onKey, onExit: () => hub.close() });
+  pane = runPane({ fps: 20, render, onKey, onExit: () => hub.close() });
+  refreshPanel();
   if (!engine) say("no sound device found — editing still works", "bad");
   else if (!initial) say(language.emptyMessage);
   else say(`opened ${path.basename(filePath)} — ctrl+s to play`);
